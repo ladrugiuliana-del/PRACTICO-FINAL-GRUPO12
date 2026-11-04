@@ -1,0 +1,56 @@
+.metadata
+
+# ==================================
+# Spring Boot / Java / Maven
+# ==================================
+# Directorios de compilación y artefactos de Maven
+target/
+*.class
+
+# Archivos de registros (logs)
+*.log
+logs/
+
+# Archivos de caché del sistema de compilación
+.mvn/
+mvnw
+mvnw.cmd
+
+# ==================================
+# Spring Tools / Eclipse IDE
+# ==================================
+# Archivos de configuración específicos de Eclipse y Spring Tools
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# ==================================
+# Visual Studio Code (por si algún integrante lo usa)
+# ==================================
+.vscode/
+
+# ==================================
+# Sistema Operativo
+# ==================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Linux / General
+*~
+.swp
+.swo

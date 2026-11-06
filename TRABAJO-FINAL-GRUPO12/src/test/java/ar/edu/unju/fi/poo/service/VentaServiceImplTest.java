@@ -1,6 +1,6 @@
 package ar.edu.unju.fi.poo.service;
 
-import ar.edu.unju.fi.poo.entity.Venta;
+import ar.edu.unju.fi.poo.model.Venta;
 import ar.edu.unju.fi.poo.repository.VentaRepository;
 import ar.edu.unju.fi.poo.service.impl.VentaServiceImpl;
 import org.junit.jupiter.api.Test;

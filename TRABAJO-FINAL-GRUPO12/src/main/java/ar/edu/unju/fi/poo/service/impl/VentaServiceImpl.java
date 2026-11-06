@@ -1,6 +1,6 @@
 package ar.edu.unju.fi.poo.service.impl;
 
-import ar.edu.unju.fi.poo.entity.Venta;
+import ar.edu.unju.fi.poo.model.Venta;
 import ar.edu.unju.fi.poo.repository.VentaRepository;
 import ar.edu.unju.fi.poo.service.VentaService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,9 +19,9 @@ public class VentaServiceImpl implements VentaService {
         return ventaRepository.findByFechaBetween(inicio, fin);
     }
 
-    // este metodo fue el culpable, colgue de hacerlo pero por fin con este no deberia dar problemas las Junit test
     @Override
     public List<Venta> buscarHistorialPorCliente(String clienteId) {
         return ventaRepository.findByClienteId(clienteId);
+
     }
 }

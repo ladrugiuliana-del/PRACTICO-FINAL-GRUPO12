@@ -1,6 +1,5 @@
 package ar.edu.unju.fi.poo.model;
 
-import ar.edu.unju.fi.poo.entity.Cliente;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;

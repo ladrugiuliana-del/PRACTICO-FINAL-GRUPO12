@@ -1,8 +1,9 @@
 package ar.edu.unju.fi.poo.service;
 
-import ar.edu.unju.fi.poo.entity.Venta;
 import java.time.LocalDate;
 import java.util.List;
+
+import ar.edu.unju.fi.poo.model.Venta;
 
 public interface VentaService {
     

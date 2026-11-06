@@ -11,4 +11,6 @@ public interface VentaService {
     Contado realizarVentaContado(String clienteId, List<Detalle> detalles, String codigoCupon);
     Financiada realizarVentaFinanciada(String clienteId, List<Detalle> detalles, Integer porcentajeRecargo);
     List<Cuota> consultarCuotasPendientesPorCliente(String clienteId);
+    List<Contado> buscarVentasContado();
+    List<Financiada> buscarVentasFinanciadas();
 }

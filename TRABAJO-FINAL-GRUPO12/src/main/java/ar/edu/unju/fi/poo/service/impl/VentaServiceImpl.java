@@ -116,4 +116,13 @@ public class VentaServiceImpl implements VentaService {
         }
         venta.setSubtotal(subtotalAcumulado);
     }
+    @Override
+    public List<Contado> buscarVentasContado() {
+        return ventaRepository.findByTipoModalidad(Contado.class);
+    }
+
+    @Override
+    public List<Financiada> buscarVentasFinanciadas() {
+        return ventaRepository.findByTipoModalidad(Financiada.class);
+    }
 }

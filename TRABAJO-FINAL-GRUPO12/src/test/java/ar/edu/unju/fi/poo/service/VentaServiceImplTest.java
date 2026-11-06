@@ -3,6 +3,8 @@ package ar.edu.unju.fi.poo.service;
 import ar.edu.unju.fi.poo.model.*;
 import ar.edu.unju.fi.poo.repository.*;
 import ar.edu.unju.fi.poo.service.impl.VentaServiceImpl;
+
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -139,5 +141,31 @@ public class VentaServiceImplTest {
         assertThrows(IllegalStateException.class, () ->
             ventaService.realizarVentaContado("20391234567", List.of(detalle), null)
         );
+    }
+    
+    @Test
+    void testBuscarVentasContado() {
+        List<Contado> ventasContadoSimuladas = List.of(new Contado());
+        when(ventaRepository.findByTipoModalidad(Contado.class)).thenReturn(ventasContadoSimuladas);
+
+        List<Contado> resultado = ventaService.buscarVentasContado();
+
+        assertNotNull(resultado, "La lista de ventas al contado no debe ser nula");
+        assertEquals(1, resultado.size());
+        assertEquals(ventasContadoSimuladas, resultado);
+        verify(ventaRepository, times(1)).findByTipoModalidad(Contado.class);
+    }
+
+    @Test
+    void testBuscarVentasFinanciadas() {
+        List<Financiada> ventasFinanciadasSimuladas = List.of(new Financiada());
+        when(ventaRepository.findByTipoModalidad(Financiada.class)).thenReturn(ventasFinanciadasSimuladas);
+
+        List<Financiada> resultado = ventaService.buscarVentasFinanciadas();
+
+        assertNotNull(resultado, "La lista de ventas financiadas no debe ser nula");
+        assertEquals(1, resultado.size());
+        assertEquals(ventasFinanciadasSimuladas, resultado);
+        verify(ventaRepository, times(1)).findByTipoModalidad(Financiada.class);
     }
 }

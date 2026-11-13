@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "productos")
+
+
 public class Producto {
 
 	@Id
@@ -101,6 +103,9 @@ public class Producto {
         return this.stock >= cantidadRequerida;
     }
 
+	public Producto() {
+	}
+	
     public void actualizarStock(int cantidadVendida) {
         if (verificarStock(cantidadVendida)) {
             this.stock -= cantidadVendida;

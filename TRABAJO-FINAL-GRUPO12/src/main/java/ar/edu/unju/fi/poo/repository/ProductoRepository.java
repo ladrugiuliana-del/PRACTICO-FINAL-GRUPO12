@@ -11,16 +11,25 @@ import java.util.List;
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Integer> {
 
-    // Filtrar por marca
+    // --- METODOS anteriores mios (No se tocan avisar si es que si uwu)
     List<Producto> findByMarcaIgnoreCase(String marca);
 
-    // Filtrar por categoría
     List<Producto> findByCategoriaId(Integer categoriaId);
 
-    // Filtrar por rangos de precio
     List<Producto> findByPrecioBaseBetween(double precioMin, double precioMax);
 
-    // Consultar productos con stock crítico o por debajo de un umbral
     @Query("SELECT p FROM Producto p WHERE p.stock <= :umbral")
     List<Producto> findProductosStockCritico(@Param("umbral") Integer umbral);
+
+    // --- METODO PARA LA API REST (este seria el agregado) ---
+    @Query("SELECT p FROM Producto p WHERE " +
+           "(:categoriaId IS NULL OR p.categoria.id = :categoriaId) AND " +
+           "(:marca IS NULL OR p.marca = :marca) AND " +
+           "(:precioMin IS NULL OR p.precioBase >= :precioMin) AND " +
+           "(:precioMax IS NULL OR p.precioBase <= :precioMax)")
+    List<Producto> filtrarProductos(
+            @Param("categoriaId") Integer categoriaId,
+            @Param("marca") String marca,
+            @Param("precioMin") Double precioMin,
+            @Param("precioMax") Double precioMax);
 }

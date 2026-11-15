@@ -1,5 +1,6 @@
 package ar.edu.unju.fi.poo.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +27,6 @@ public class ClienteServiceImpl implements ClienteService {
 
 	@Override
 	public Cliente registrarCliente(Cliente cliente) {
-		
 		if (clienteRepo.existsByEmail(cliente.getEmail())) {
 			throw new ClienteDuplicadoException("El email ya esta registrado");
 		}
@@ -58,40 +58,59 @@ public class ClienteServiceImpl implements ClienteService {
 
 	@Override
 	public Cliente buscarPorDniOCuit(String documento) {
+		List<Cliente> clientes = (List<Cliente>) clienteRepo.findAll();
 		
+		for (Cliente c : clientes) {
+			if (c.getId() != null && c.getId().equals(documento)) {
+				return c;
+			}
+			if (c instanceof Particular) {
+				Particular p = (Particular) c;
+				if (p.getDni() != null && p.getDni().equals(documento)) {
+					return p;
+				}
+			}
+		}
 		return null; 
 	}
 
 	@Override
 	public List<Cliente> buscarPorNombreORazonSocial(String nombre) {
+		List<Cliente> resultado = new ArrayList<>();
+		List<Cliente> clientes = (List<Cliente>) clienteRepo.findAll();
 		
-		return null;
+		for (Cliente c : clientes) {
+			if (c instanceof Particular) {
+				Particular p = (Particular) c;
+				if ((p.getNombre() != null && p.getNombre().toLowerCase().contains(nombre.toLowerCase())) ||
+					(p.getApellido() != null && p.getApellido().toLowerCase().contains(nombre.toLowerCase()))) {
+					resultado.add(p);
+				}
+			} else if (c instanceof Empresa) {
+				Empresa e = (Empresa) c;
+				if (e.getRazonSocial() != null && e.getRazonSocial().toLowerCase().contains(nombre.toLowerCase())) {
+					resultado.add(e);
+				}
+			}
+		}
+		return resultado;
 	}
-
-	
 
 	@Override
 	public ClienteResponseDTO mapearADTO(Cliente cliente) {
 		ClienteResponseDTO dto = new ClienteResponseDTO();
-		
 		dto.setId(cliente.getId()); 
 		dto.setEmail(cliente.getEmail());
 		
-		
 		if (cliente instanceof Particular) {
-			Particular p = (Particular) cliente; // casteo
+			Particular p = (Particular) cliente;
 			dto.setTipoCliente("PARTICULAR");
 			dto.setIdentificacion(p.getDni());
-			
-			
 			dto.setNombreORazonSocial(p.getNombre() + " " + p.getApellido());
 		} 
-		
 		else if (cliente instanceof Empresa) {
-			Empresa e = (Empresa) cliente; 
+			Empresa e = (Empresa) cliente;
 			dto.setTipoCliente("EMPRESA");
-			
-			
 			dto.setIdentificacion("Sin CUIT registrado"); 
 			dto.setNombreORazonSocial(e.getRazonSocial());
 		}
@@ -105,7 +124,6 @@ public class ClienteServiceImpl implements ClienteService {
 			return null;
 		}
 
-		
 		if (dto.getTipoCliente().equalsIgnoreCase("PARTICULAR")) {
 			Particular p = new Particular();
 			p.setEmail(dto.getEmail());
@@ -113,18 +131,13 @@ public class ClienteServiceImpl implements ClienteService {
 			p.setDireccion(dto.getDireccion());
 			p.setDni(dto.getDni());
 			p.setNombre(dto.getNombre());
-			
 			return p;
-			
 		} 
-		
 		else if (dto.getTipoCliente().equalsIgnoreCase("EMPRESA")) {
 			Empresa e = new Empresa();
 			e.setEmail(dto.getEmail());
 			e.setTelefono(dto.getTelefono());
 			e.setDireccion(dto.getDireccion());
-			
-			
 			e.setRazonSocial(dto.getRazonSocial());
 			return e;
 		}

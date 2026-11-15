@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.util.List;
@@ -45,39 +44,23 @@ public class ProductoController {
 
     @GetMapping("/{id}")
     public ProductoDto buscar(@PathVariable Integer id) {
-        try {
-            return service.buscarPorIdDto(id);
-        } catch (ProductoException e) {
-            throw new ResponseStatusException(e.getHttpStatus(), e.getMessage());
-        }
+        return service.buscarPorIdDto(id);
     }
 
     @PostMapping
     public ResponseEntity<ProductoDto> crear(@RequestBody ProductoDto producto) {
-        try {
-            ProductoDto nuevo = service.crear(producto);
-            return ResponseEntity.created(URI.create("/api/productos/" + nuevo.getId())).body(nuevo);
-        } catch (ProductoException e) {
-            throw new ResponseStatusException(e.getHttpStatus(), e.getMessage());
-        }
+        ProductoDto nuevo = service.crear(producto);
+        return ResponseEntity.created(URI.create("/api/productos/" + nuevo.getId())).body(nuevo);
     }
 
     @PutMapping("/{id}")
     public ProductoDto actualizar(@PathVariable Integer id, @RequestBody ProductoDto producto) {
-        try {
-            return service.actualizar(id, producto);
-        } catch (ProductoException e) {
-            throw new ResponseStatusException(e.getHttpStatus(), e.getMessage());
-        }
+        return service.actualizar(id, producto);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void eliminar(@PathVariable Integer id) {
-        try {
-            service.eliminar(id);
-        } catch (ProductoException e) {
-            throw new ResponseStatusException(e.getHttpStatus(), e.getMessage());
-        }
+        service.eliminar(id);
     }
 }

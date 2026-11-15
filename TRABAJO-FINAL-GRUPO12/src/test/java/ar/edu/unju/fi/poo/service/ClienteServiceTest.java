@@ -7,13 +7,13 @@ import ar.edu.unju.fi.poo.model.Empresa;
 import ar.edu.unju.fi.poo.model.Particular;
 import ar.edu.unju.fi.poo.repository.ClienteRepository;
 import ar.edu.unju.fi.poo.repository.ParticularRepository;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -84,5 +84,38 @@ class ClienteServiceTest {
 
         assertNotNull(resultado);
         assertEquals("Maria", ((Particular) resultado).getNombre());
+    }
+
+    @Test
+    void testBuscarPorDniOCuit() {
+        Particular cliente = new Particular();
+        cliente.setId("20401234567");
+        cliente.setDni("40123456");
+        cliente.setNombre("Carlos");
+
+        when(clienteRepo.findAll()).thenReturn(List.of(cliente));
+
+        Cliente resultado = clienteService.buscarPorDniOCuit("40123456");
+
+        assertNotNull(resultado);
+        assertEquals("Carlos", ((Particular) resultado).getNombre());
+    }
+
+    @Test
+    void testBuscarPorNombreORazonSocial() {
+        Particular p = new Particular();
+        p.setId("20401234567");
+        p.setNombre("Carlos");
+        p.setApellido("Gomez");
+
+        Empresa e = new Empresa();
+        e.setId("30701234567");
+        e.setRazonSocial("Insumos Jujuy SRL");
+
+        when(clienteRepo.findAll()).thenReturn(List.of(p, e));
+
+        List<Cliente> resultado = clienteService.buscarPorNombreORazonSocial("Jujuy");
+
+        assertEquals(1, resultado.size());
     }
 }

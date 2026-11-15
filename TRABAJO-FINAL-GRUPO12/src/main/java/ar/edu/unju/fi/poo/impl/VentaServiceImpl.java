@@ -1,4 +1,4 @@
-package ar.edu.unju.fi.poo.service.impl;
+package ar.edu.unju.fi.poo.impl;
 
 import ar.edu.unju.fi.poo.model.*;
 import org.springframework.beans.factory.annotation.Autowired;

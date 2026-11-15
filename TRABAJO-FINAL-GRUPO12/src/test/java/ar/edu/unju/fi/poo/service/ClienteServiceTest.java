@@ -1,11 +1,13 @@
 package ar.edu.unju.fi.poo.service;
 
 import ar.edu.unju.fi.poo.exceptions.ClienteDuplicadoException;
+import ar.edu.unju.fi.poo.impl.ClienteServiceImpl;
 import ar.edu.unju.fi.poo.model.Cliente;
 import ar.edu.unju.fi.poo.model.Empresa;
 import ar.edu.unju.fi.poo.model.Particular;
 import ar.edu.unju.fi.poo.repository.ClienteRepository;
 import ar.edu.unju.fi.poo.repository.ParticularRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;

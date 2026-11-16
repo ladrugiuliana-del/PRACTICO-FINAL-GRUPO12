@@ -1,9 +1,8 @@
 package ar.edu.unju.fi.poo.controller;
 
 import ar.edu.unju.fi.poo.dto.ProductoDto;
-import ar.edu.unju.fi.poo.exceptions.ProductoException; // Asumimos que el Integrante 4 la creó acá
 import ar.edu.unju.fi.poo.service.ProductoService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,10 +12,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/productos")
+@RequiredArgsConstructor
 public class ProductoController {
 
-    @Autowired
-    private ProductoService service;
+    private final ProductoService service;
 
     // ENDPOINTS DE CONSULTA (Filtros del Travalo)
 

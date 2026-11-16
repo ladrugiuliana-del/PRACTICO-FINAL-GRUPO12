@@ -1,22 +1,24 @@
-package ar.edu.unju.fi.poo.model;
+package ar.edu.unju.fi.poo.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @DiscriminatorValue("FINANCIADA")
+@Getter
+@NoArgsConstructor
 public class Financiada extends Venta {
 
+    @Setter
     private Integer recargo;
 
     @OneToMany(mappedBy = "financiada", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Cuota> cuotas = new ArrayList<>();
-
-    public Financiada() {
-        super();
-    }
 
     @Override
     public void calcularTotal() {
@@ -40,10 +42,4 @@ public class Financiada extends Venta {
             this.cuotas.add(cuota);
         }
     }
-
-    public Integer getRecargo() { return recargo; }
-    public void setRecargo(Integer recargo) { this.recargo = recargo; }
-
-    public List<Cuota> getCuotas() { return cuotas; }
-    public void setCuotas(List<Cuota> cuotas) { this.cuotas = cuotas; }
 }

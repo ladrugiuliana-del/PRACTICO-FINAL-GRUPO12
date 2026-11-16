@@ -3,27 +3,25 @@ package ar.edu.unju.fi.poo.impl;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import ar.edu.unju.fi.poo.dto.ClienteRequestDTO;
 import ar.edu.unju.fi.poo.dto.ClienteResponseDTO;
+import ar.edu.unju.fi.poo.entity.Cliente;
+import ar.edu.unju.fi.poo.entity.Empresa;
+import ar.edu.unju.fi.poo.entity.Particular;
 import ar.edu.unju.fi.poo.exceptions.ClienteDuplicadoException;
-import ar.edu.unju.fi.poo.model.Cliente;
-import ar.edu.unju.fi.poo.model.Empresa;
-import ar.edu.unju.fi.poo.model.Particular;
 import ar.edu.unju.fi.poo.repository.ClienteRepository;
 import ar.edu.unju.fi.poo.repository.ParticularRepository;
 import ar.edu.unju.fi.poo.service.ClienteService;
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class ClienteServiceImpl implements ClienteService {
 
-	@Autowired
-	private ClienteRepository clienteRepo;
-
-	@Autowired
-	private ParticularRepository particularRepo;
+	private final ClienteRepository clienteRepo;
+	private final ParticularRepository particularRepo;
 
 	@Override
 	public Cliente registrarCliente(Cliente cliente) {
@@ -71,7 +69,7 @@ public class ClienteServiceImpl implements ClienteService {
 				}
 			}
 		}
-		return null; 
+		return null;
 	}
 
 	@Override
@@ -99,7 +97,7 @@ public class ClienteServiceImpl implements ClienteService {
 	@Override
 	public ClienteResponseDTO mapearADTO(Cliente cliente) {
 		ClienteResponseDTO dto = new ClienteResponseDTO();
-		dto.setId(cliente.getId()); 
+		dto.setId(cliente.getId());
 		dto.setEmail(cliente.getEmail());
 		
 		if (cliente instanceof Particular) {
@@ -111,7 +109,7 @@ public class ClienteServiceImpl implements ClienteService {
 		else if (cliente instanceof Empresa) {
 			Empresa e = (Empresa) cliente;
 			dto.setTipoCliente("EMPRESA");
-			dto.setIdentificacion("Sin CUIT registrado"); 
+			dto.setIdentificacion("Sin CUIT registrado");
 			dto.setNombreORazonSocial(e.getRazonSocial());
 		}
 		
@@ -126,15 +124,18 @@ public class ClienteServiceImpl implements ClienteService {
 
 		if (dto.getTipoCliente().equalsIgnoreCase("PARTICULAR")) {
 			Particular p = new Particular();
+			p.setId(dto.getDni()); // <-- ¡ESTO RESUELVE EL ERROR DE PERSIST! Asignamos el DNI como ID principal.
 			p.setEmail(dto.getEmail());
 			p.setTelefono(dto.getTelefono());
 			p.setDireccion(dto.getDireccion());
 			p.setDni(dto.getDni());
 			p.setNombre(dto.getNombre());
+			p.setApellido(dto.getApellido());
 			return p;
 		} 
 		else if (dto.getTipoCliente().equalsIgnoreCase("EMPRESA")) {
 			Empresa e = new Empresa();
+			// Si la empresa también usa un identificador como ID, puedes asignarlo aquí (ej: e.setId(dto.getCuit()))
 			e.setEmail(dto.getEmail());
 			e.setTelefono(dto.getTelefono());
 			e.setDireccion(dto.getDireccion());
@@ -142,6 +143,6 @@ public class ClienteServiceImpl implements ClienteService {
 			return e;
 		}
 		
-		return null; 
+		return null;
 	}
 }

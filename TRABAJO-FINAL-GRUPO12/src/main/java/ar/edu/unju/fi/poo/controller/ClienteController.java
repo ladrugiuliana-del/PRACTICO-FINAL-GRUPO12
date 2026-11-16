@@ -3,7 +3,6 @@ package ar.edu.unju.fi.poo.controller;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,19 +14,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ar.edu.unju.fi.poo.dto.ClienteRequestDTO;
 import ar.edu.unju.fi.poo.dto.ClienteResponseDTO;
-import ar.edu.unju.fi.poo.model.Cliente;
+import ar.edu.unju.fi.poo.entity.Cliente;
 import ar.edu.unju.fi.poo.service.ClienteService;
+import lombok.RequiredArgsConstructor;
 
 @RestController
+@RequiredArgsConstructor
 public class ClienteController {
 
-	@Autowired
-	private ClienteService clienteService;
+	private final ClienteService clienteService;
 
 	// 1. Endpoint para crear un cliente
 	@PostMapping("/api/clientes")
 	public ResponseEntity<ClienteResponseDTO> crearCliente(@RequestBody ClienteRequestDTO dto) {
-		
 		
 		Cliente cliente = clienteService.mapearAEntidad(dto);
 		
@@ -35,10 +34,8 @@ public class ClienteController {
 			return ResponseEntity.badRequest().build(); // Error 400 si mandan mal el tipo
 		}
 
-		
 		Cliente clienteGuardado = clienteService.registrarCliente(cliente);
 
-		
 		ClienteResponseDTO respuesta = clienteService.mapearADTO(clienteGuardado);
 
 		// Devolvemos estado 201 
@@ -49,7 +46,6 @@ public class ClienteController {
 	@GetMapping("/api/clientes")
 	public ResponseEntity<List<ClienteResponseDTO>> listarClientes() {
 		List<Cliente> clientes = clienteService.obtenerTodosLosClientes();
-		
 
 		List<ClienteResponseDTO> respuesta = new ArrayList<>();
 		for (Cliente c : clientes) {

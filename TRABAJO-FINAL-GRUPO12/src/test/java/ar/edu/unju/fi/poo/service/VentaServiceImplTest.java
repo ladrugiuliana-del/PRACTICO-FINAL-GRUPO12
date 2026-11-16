@@ -1,7 +1,7 @@
 package ar.edu.unju.fi.poo.service;
 
+import ar.edu.unju.fi.poo.entity.*;
 import ar.edu.unju.fi.poo.impl.VentaServiceImpl;
-import ar.edu.unju.fi.poo.model.*;
 import ar.edu.unju.fi.poo.repository.*;
 
 import org.jspecify.annotations.Nullable;

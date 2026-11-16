@@ -3,7 +3,7 @@ package ar.edu.unju.fi.poo.service;
 import java.util.List;
 import ar.edu.unju.fi.poo.dto.ClienteRequestDTO;
 import ar.edu.unju.fi.poo.dto.ClienteResponseDTO;
-import ar.edu.unju.fi.poo.model.Cliente;
+import ar.edu.unju.fi.poo.entity.Cliente;
 
 public interface ClienteService {
     

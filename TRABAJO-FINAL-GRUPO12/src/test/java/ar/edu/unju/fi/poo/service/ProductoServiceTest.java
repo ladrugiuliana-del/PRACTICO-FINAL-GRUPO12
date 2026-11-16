@@ -1,7 +1,7 @@
 package ar.edu.unju.fi.poo.service;
 
-import ar.edu.unju.fi.poo.model.Categoria;
-import ar.edu.unju.fi.poo.model.Producto;
+import ar.edu.unju.fi.poo.entity.Categoria;
+import ar.edu.unju.fi.poo.entity.Producto;
 import ar.edu.unju.fi.poo.repository.CategoriaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

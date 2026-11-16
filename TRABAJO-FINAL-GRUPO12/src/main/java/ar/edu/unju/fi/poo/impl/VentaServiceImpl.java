@@ -1,37 +1,24 @@
 package ar.edu.unju.fi.poo.impl;
 
-import ar.edu.unju.fi.poo.model.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import ar.edu.unju.fi.poo.entity.*;
 import ar.edu.unju.fi.poo.repository.*;
 import ar.edu.unju.fi.poo.service.VentaService;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class VentaServiceImpl implements VentaService {
 
-    @Autowired
-    private VentaRepository ventaRepository;
+    private final VentaRepository ventaRepository;
     private final ClienteRepository clienteRepository;
     private final ProductoRepository productoRepository;
     private final CuponRepository cuponRepository;
     private final CuotaRepository cuotaRepository;
-
-    public VentaServiceImpl(VentaRepository ventaRepository,
-                            ClienteRepository clienteRepository,
-                            ProductoRepository productoRepository,
-                            CuponRepository cuponRepository,
-                            CuotaRepository cuotaRepository) {
-        this.ventaRepository = ventaRepository;
-        this.clienteRepository = clienteRepository;
-        this.productoRepository = productoRepository;
-        this.cuponRepository = cuponRepository;
-        this.cuotaRepository = cuotaRepository;
-    }
 
     @Override
     public List<Venta> buscarVentasPorFecha(LocalDate inicio, LocalDate fin) {
@@ -116,6 +103,7 @@ public class VentaServiceImpl implements VentaService {
         }
         venta.setSubtotal(subtotalAcumulado);
     }
+
     @Override
     public List<Contado> buscarVentasContado() {
         return ventaRepository.findByTipoModalidad(Contado.class);

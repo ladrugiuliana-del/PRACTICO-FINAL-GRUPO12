@@ -1,9 +1,9 @@
 package ar.edu.unju.fi.poo.service;
 
+import ar.edu.unju.fi.poo.entity.Cliente;
+import ar.edu.unju.fi.poo.entity.Empresa;
+import ar.edu.unju.fi.poo.entity.Particular;
 import ar.edu.unju.fi.poo.exceptions.ClienteDuplicadoException;
-import ar.edu.unju.fi.poo.model.Cliente;
-import ar.edu.unju.fi.poo.model.Empresa;
-import ar.edu.unju.fi.poo.model.Particular;
 import ar.edu.unju.fi.poo.repository.ClienteRepository;
 import ar.edu.unju.fi.poo.repository.ParticularRepository;
 import org.junit.jupiter.api.Test;

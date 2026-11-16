@@ -1,10 +1,11 @@
 package ar.edu.unju.fi.poo.repository;
 
-import ar.edu.unju.fi.poo.model.Producto;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import ar.edu.unju.fi.poo.entity.Producto;
 
 import java.util.List;
 

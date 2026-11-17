@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -60,6 +61,13 @@ public class VentaController {
 				15 // porcentaje de recargo de ejemplo
 		);
 		return ResponseEntity.created(URI.create("/api/v1/ventas/financiada/" + nuevaVenta.getId())).body(nuevaVenta);
+	}
+
+	// Endpoint de Cobro de Cuota
+	@PostMapping("/financiada/{ventaId}/cobrar-cuota")
+	public ResponseEntity<RespuestaCuotaDTO> cobrarCuota(@PathVariable String ventaId) {
+		RespuestaCuotaDTO respuesta = service.cobrarSiguienteCuota(ventaId);
+		return ResponseEntity.ok(respuesta);
 	}
 
 	// Consulta el historial de ventas asociadas a un cliente en particular (con tus DTOs)

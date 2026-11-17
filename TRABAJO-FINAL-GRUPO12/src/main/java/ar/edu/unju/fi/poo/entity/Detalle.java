@@ -1,5 +1,7 @@
 package ar.edu.unju.fi.poo.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,6 +27,7 @@ public class Detalle {
     private double subtotal;
 
     @Setter
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "venta_id")
     private Venta venta;

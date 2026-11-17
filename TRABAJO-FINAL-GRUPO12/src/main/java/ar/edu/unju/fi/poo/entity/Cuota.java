@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 @Entity
 @Table(name = "cuotas")
 @Getter
@@ -29,6 +29,7 @@ public class Cuota {
     private String estadoCuota; // Manejado como String ("ADEUDADA", "PAGADA")
 
     @Setter
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venta_id")
     private Financiada financiada;

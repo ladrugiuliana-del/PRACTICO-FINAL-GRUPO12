@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ar.edu.unju.fi.poo.dto.ClienteRequestDTO;
 import ar.edu.unju.fi.poo.dto.ClienteResponseDTO;
+import ar.edu.unju.fi.poo.dto.EstadoCuentaDTO;
 import ar.edu.unju.fi.poo.entity.Cliente;
 import ar.edu.unju.fi.poo.service.ClienteService;
 import lombok.RequiredArgsConstructor;
@@ -73,4 +74,14 @@ public class ClienteController {
 		clienteService.eliminarCliente(id);
 		return ResponseEntity.noContent().build();
 	}
+	// 5. Endpoint para consultar el estado de cuenta 
+		@GetMapping("/api/clientes/{id}/estado-cuenta")
+		public ResponseEntity<EstadoCuentaDTO> consultarEstadoCuenta(@PathVariable String id) {
+			try {
+				EstadoCuentaDTO estado = clienteService.consultarEstadoCuenta(id);
+				return ResponseEntity.ok(estado);
+			} catch (RuntimeException e) {
+				return ResponseEntity.notFound().build(); 
+			}
+		}
 }

@@ -3,6 +3,7 @@ package ar.edu.unju.fi.poo.service;
 import java.util.List;
 import ar.edu.unju.fi.poo.dto.ClienteRequestDTO;
 import ar.edu.unju.fi.poo.dto.ClienteResponseDTO;
+import ar.edu.unju.fi.poo.dto.EstadoCuentaDTO;
 import ar.edu.unju.fi.poo.entity.Cliente;
 
 public interface ClienteService {
@@ -18,4 +19,5 @@ public interface ClienteService {
     
     ClienteResponseDTO mapearADTO(Cliente cliente);
     Cliente mapearAEntidad(ClienteRequestDTO dto);
+    EstadoCuentaDTO consultarEstadoCuenta(String idCliente);
 }

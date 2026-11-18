@@ -1,5 +1,6 @@
 package ar.edu.unju.fi.poo.service;
 
+import ar.edu.unju.fi.poo.dto.RespuestaCuotaDTO;
 import ar.edu.unju.fi.poo.entity.*;
 import ar.edu.unju.fi.poo.impl.VentaServiceImpl;
 import ar.edu.unju.fi.poo.repository.*;
@@ -167,5 +168,56 @@ public class VentaServiceImplTest {
         assertEquals(1, resultado.size());
         assertEquals(ventasFinanciadasSimuladas, resultado);
         verify(ventaRepository, times(1)).findByTipoModalidad(Financiada.class);
+    }
+    
+    @Test
+    void cobrarSiguienteCuota_CuotaVencida_ActualizaAVencidaYLuegoPagada() {
+        Financiada venta = new Financiada();
+        venta.setCodigoComprobante("COMP-001");
+        venta.setTotal(60000.0);
+        venta.setFecha(LocalDate.now().minusMonths(2));
+        venta.generarPlan6Cuotas(); // Cuota 1 tiene vencimiento hace 1 mes
+
+        when(ventaRepository.findById(10)).thenReturn(Optional.of(venta));
+
+        RespuestaCuotaDTO resultado = ventaService.cobrarSiguienteCuota("10");
+
+        assertEquals(1, resultado.getNCuota());
+        assertEquals("PAGADA", resultado.getEstadoCuota());
+        assertEquals("PENDIENTE", venta.getEstado());
+    }
+
+    @Test
+    void cobrarSiguienteCuota_UltimaCuota_CambiaVentaASaldada() {
+        Financiada venta = new Financiada();
+        venta.setCodigoComprobante("COMP-002");
+        venta.setTotal(60000.0);
+        venta.setFecha(LocalDate.now());
+        venta.generarPlan6Cuotas();
+        // Marcamos las primeras 5 como pagadas
+        for (int i = 0; i < 5; i++) {
+            venta.getCuotas().get(i).marcarComoPagada();
+        }
+
+        when(ventaRepository.findById(11)).thenReturn(Optional.of(venta));
+
+        RespuestaCuotaDTO resultado = ventaService.cobrarSiguienteCuota("11");
+
+        assertEquals(6, resultado.getNCuota());
+        assertEquals("PAGADA", resultado.getEstadoCuota());
+        assertEquals("SALDADA", venta.getEstado());
+    }
+
+    @Test
+    void cobrarSiguienteCuota_VentaYaSaldada_LanzaExcepcion() {
+        Financiada venta = new Financiada();
+        venta.setTotal(60000.0);
+        venta.generarPlan6Cuotas();
+        venta.getCuotas().forEach(Cuota::marcarComoPagada);
+        venta.actualizarEstado();
+
+        when(ventaRepository.findById(12)).thenReturn(Optional.of(venta));
+
+        assertThrows(IllegalStateException.class, () -> ventaService.cobrarSiguienteCuota("12"));
     }
 }

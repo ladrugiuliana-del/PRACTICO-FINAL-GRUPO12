@@ -32,8 +32,18 @@ public class VentaServiceImpl implements VentaService {
     }
 
     @Override
+    @Transactional
     public List<Cuota> consultarCuotasPendientesPorCliente(String clienteId) {
-        return cuotaRepository.findByFinanciadaClienteIdAndEstadoCuota(clienteId, "ADEUDADA");
+        List<Cuota> pendientes = cuotaRepository.findByFinanciadaClienteIdAndEstadoCuotaInOrderByNCuotaAsc(
+                clienteId, List.of("ADEUDADA", "VENCIDA")
+        );
+        // Actualiza automáticamente a VENCIDA aquellas cuya fecha ya expiró
+        for (Cuota c : pendientes) {
+            if (c.verificarVencimiento()) {
+                cuotaRepository.save(c);
+            }
+        }
+        return pendientes;
     }
 
     @Override
@@ -86,37 +96,54 @@ public class VentaServiceImpl implements VentaService {
     @Override
     @Transactional
     public RespuestaCuotaDTO cobrarSiguienteCuota(String ventaId) {
-    	Integer idVentaParsed = Integer.parseInt(ventaId);
-    	
-        // Busca la venta por su identificador
-    	Venta venta = ventaRepository.findById(idVentaParsed)
-                .orElseThrow(() -> new IllegalArgumentException("Venta no encontrada con ID: " + ventaId));
-
-        if (!(venta instanceof Financiada)) {
-            throw new IllegalStateException("La venta especificada no es financiada y no posee cuotas.");
+        Integer idVentaParsed;
+        try {
+            idVentaParsed = Integer.parseInt(ventaId);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("El identificador de la venta debe ser numérico: " + ventaId);
         }
 
-        Financiada financiada = (Financiada) venta;
+        Venta venta = ventaRepository.findById(idVentaParsed)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Venta no encontrada con ID: " + ventaId));
 
-        // Busca la primera cuota pendiente (ADEUDADA o VENCIDA) en orden correlativo estricto
-        Cuota cuotaACobrar = financiada.getCuotas().stream()
-                .filter(c -> "ADEUDADA".equals(c.getEstadoCuota()) || "VENCIDA".equals(c.getEstadoCuota()))
-                .sorted((c1, c2) -> Integer.compare(c1.getNCuota(), c2.getNCuota()))
+        if (!(venta instanceof Financiada financiada)) {
+            throw new IllegalStateException("La venta especificada es de contado y no posee plan de cuotas.");
+        }
+
+        if ("SALDADA".equalsIgnoreCase(financiada.getEstado())) {
+            throw new IllegalStateException("La venta ya se encuentra SALDADA; no tiene cuotas pendientes.");
+        }
+
+        // Ordena todas las cuotas por número correlativo estricto (1..6)
+        List<Cuota> cuotasOrdenadas = financiada.getCuotas().stream()
+                .sorted(java.util.Comparator.comparingInt(Cuota::getNCuota))
+                .toList();
+
+        // Obtiene la primera cuota impaga correlativa
+        Cuota cuotaACobrar = cuotasOrdenadas.stream()
+                .filter(Cuota::estaImpaga)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("No quedan cuotas pendientes para esta venta (la venta ya se encuentra saldada)."));
 
-        // Impacta el pago utilizando el método de la entidad Cuota
+        // impedimos cobrar cuotas futuras si existiera alguna cuota anterior impaga
+        boolean existenAnterioresImpagas = cuotasOrdenadas.stream()
+                .anyMatch(c -> c.getNCuota() < cuotaACobrar.getNCuota() && c.estaImpaga());
+        if (existenAnterioresImpagas) {
+            throw new IllegalStateException("No se puede cobrar la cuota N° " + cuotaACobrar.getNCuota()
+                    + " porque existen cuotas anteriores impagas.");
+        }
+
+        //si superó el vencimiento, pasa automáticamente a VENCIDA antes de registrar el pago
+        cuotaACobrar.verificarVencimiento();
+
+        // Registra el pago (pasa a PAGADA)
         cuotaACobrar.marcarComoPagada();
         cuotaRepository.save(cuotaACobrar);
 
-        // Comprueba si aún quedan cuotas pendientes
-        boolean quedanPendientes = financiada.getCuotas().stream()
-                .anyMatch(c -> "ADEUDADA".equals(c.getEstadoCuota()) || "VENCIDA".equals(c.getEstadoCuota()));
-
-        // Si ya no quedan pendientes, la venta se considera saldada automáticamente
+        // Si fue la última cuota adeudada, cambia el estado general de la venta a SALDADA
+        financiada.actualizarEstado();
         ventaRepository.save(financiada);
 
-        // Retorna el DTO con el resultado del cobro
         return new RespuestaCuotaDTO(
                 cuotaACobrar.getId(),
                 cuotaACobrar.getNCuota(),

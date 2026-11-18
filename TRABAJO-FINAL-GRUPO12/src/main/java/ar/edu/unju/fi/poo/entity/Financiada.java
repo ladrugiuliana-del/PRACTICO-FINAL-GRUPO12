@@ -17,6 +17,9 @@ public class Financiada extends Venta {
     @Setter
     private Integer recargo;
 
+    @Setter
+    private String estado = "PENDIENTE"; // "PENDIENTE" o "SALDADA"
+
     @OneToMany(mappedBy = "financiada", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Cuota> cuotas = new ArrayList<>();
 
@@ -28,6 +31,7 @@ public class Financiada extends Venta {
 
     public void generarPlan6Cuotas() {
         this.cuotas.clear();
+        this.estado = "PENDIENTE";
         double importeCuota = Math.round((getTotal() / 6.0) * 100.0) / 100.0;
         LocalDate fechaBase = getFecha() != null ? getFecha() : LocalDate.now();
 
@@ -41,5 +45,13 @@ public class Financiada extends Venta {
             );
             this.cuotas.add(cuota);
         }
+    }
+
+    //Verifica si existen cuotas impagas (ADEUDADA o VENCIDA). Si no quedan compromisos pendientes, cambia el estado general a SALDADA.
+     
+    public void actualizarEstado() {
+        boolean quedanPendientes = this.cuotas.stream()
+                .anyMatch(Cuota::estaImpaga);
+        this.estado = quedanPendientes ? "PENDIENTE" : "SALDADA";
     }
 }

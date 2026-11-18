@@ -75,13 +75,8 @@ public class ClienteController {
 		return ResponseEntity.noContent().build();
 	}
 	// 5. Endpoint para consultar el estado de cuenta 
-		@GetMapping("/api/clientes/{id}/estado-cuenta")
-		public ResponseEntity<EstadoCuentaDTO> consultarEstadoCuenta(@PathVariable String id) {
-			try {
-				EstadoCuentaDTO estado = clienteService.consultarEstadoCuenta(id);
-				return ResponseEntity.ok(estado);
-			} catch (RuntimeException e) {
-				return ResponseEntity.notFound().build(); 
-			}
-		}
+	@GetMapping("/api/clientes/{id}/estado-cuenta")
+	public ResponseEntity<EstadoCuentaDTO> consultarEstadoCuenta(@PathVariable String id) {
+		return ResponseEntity.ok(clienteService.consultarEstadoCuenta(id));
+	}
 }

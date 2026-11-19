@@ -38,7 +38,19 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(status).body(error);
     }
-
+ // Excepción personalizada para cobro correlativo de cuotas y estado de ventas
+    @ExceptionHandler(CuotaException.class)
+    public ResponseEntity<RespuestaErrorDTO> handleCuotaException(CuotaException ex, HttpServletRequest request) {
+        HttpStatus status = ex.getHttpStatus() != null ? ex.getHttpStatus() : HttpStatus.BAD_REQUEST;
+        RespuestaErrorDTO error = new RespuestaErrorDTO(
+                status.value(),
+                "Error en Operación de Cuotas",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(status).body(error);
+    }
+    
     // 422 UNPROCESSABLE ENTITY: Reglas de negocio (ej. Stock insuficiente)
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<RespuestaErrorDTO> handleIllegalState(IllegalStateException ex, HttpServletRequest request) {

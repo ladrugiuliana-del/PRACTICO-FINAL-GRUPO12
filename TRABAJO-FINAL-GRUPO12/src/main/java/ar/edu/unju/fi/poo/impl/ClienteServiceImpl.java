@@ -180,35 +180,28 @@ public class ClienteServiceImpl implements ClienteService {
 				ventaDTO.setIdVenta(v.getId());
 				ventaDTO.setFechaVenta(v.getFecha());
 				
-				if (v instanceof Financiada) {
-					Financiada ventaFinanciada = (Financiada) v;
-					
-					boolean tieneDeuda = false;
+				if (v instanceof Financiada ventaFinanciada) {
 					List<RespuestaCuotaDTO> listaCuotasDTO = new ArrayList<>();
 					
 					if (ventaFinanciada.getCuotas() != null) {
 						for (Cuota c : ventaFinanciada.getCuotas()) {
+							c.verificarVencimiento(); // Refleja "VENCIDA" si ya pasó la fecha
 							RespuestaCuotaDTO cDTO = new RespuestaCuotaDTO();
-							
 							cDTO.setId(c.getId());
-							cDTO.setNCuota(c.getNCuota()); 
+							cDTO.setNCuota(c.getNCuota());
 							cDTO.setImporte(c.getImporte());
 							cDTO.setFechaVencimiento(c.getFechaVencimiento());
 							cDTO.setEstadoCuota(c.getEstadoCuota());
-							
-							if ("ADEUDADA".equalsIgnoreCase(c.getEstadoCuota())) {
-								tieneDeuda = true;
-							}
-							
+							cDTO.setCodigoComprobanteVenta(ventaFinanciada.getCodigoComprobante());
 							listaCuotasDTO.add(cDTO);
 						}
 					}
 					
-					ventaDTO.setEstadoGeneral(tieneDeuda ? "CON DEUDA" : "PAGADA");
+					ventaFinanciada.actualizarEstado();
+					ventaDTO.setEstadoGeneral(ventaFinanciada.getEstado()); // "PENDIENTE" o "SALDADA"
 					ventaDTO.setCuotas(listaCuotasDTO);
-					
 				} else {
-					ventaDTO.setEstadoGeneral("PAGADA");
+					ventaDTO.setEstadoGeneral("SALDADA");
 					ventaDTO.setCuotas(new ArrayList<>());
 				}
 				

@@ -1,23 +1,25 @@
 package ar.edu.unju.fi.poo.service;
 
 import ar.edu.unju.fi.poo.dto.ProductoDto;
-import ar.edu.unju.fi.poo.model.Producto;
+import ar.edu.unju.fi.poo.entity.Categoria;
+import ar.edu.unju.fi.poo.entity.Producto;
+import ar.edu.unju.fi.poo.exceptions.ProductoException;
 import ar.edu.unju.fi.poo.repository.ProductoRepository;
-import ar.edu.unju.fi.poo.exceptions.ProductoException; 
-import org.springframework.beans.factory.annotation.Autowired;
+import ar.edu.unju.fi.poo.repository.CategoriaRepository;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
 @Service
+@RequiredArgsConstructor
 public class ProductoService {
 
-    @Autowired
-    private ProductoRepository productoRepository;
+    private final ProductoRepository productoRepository;
+    private final CategoriaRepository categoriaRepository;
 
     // MÉTODOS ORIGINALES (TP10) no tocar si lo hace se rompe todo xd
 
@@ -116,12 +118,17 @@ public class ProductoService {
             throw new ProductoException(HttpStatus.BAD_REQUEST, "El stock no puede ser negativo");
         }
 
+        // Buscar la categoría obligatoria en la BD
+        Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
+                .orElseThrow(() -> new ProductoException(HttpStatus.NOT_FOUND, "Categoría no encontrada con ID: " + dto.getCategoriaId()));
+
         Producto producto = new Producto();
         producto.setNombre(dto.getNombre());
         producto.setDescripcion(dto.getDescripcion());
         producto.setMarca(dto.getMarca());
         producto.setStock(dto.getStock());
         producto.setPrecioBase(dto.getPrecioBase());
+        producto.setCategoria(categoria); // <- Asignación resuelta
 
         producto = productoRepository.save(producto);
         return mapearADto(producto);
@@ -134,11 +141,17 @@ public class ProductoService {
         }
 
         Producto productoExistente = buscarEntidadPorId(id);
+
+        // Buscar la categoría para la actualización también
+        Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
+                .orElseThrow(() -> new ProductoException(HttpStatus.NOT_FOUND, "Categoría no encontrada con ID: " + dto.getCategoriaId()));
+
         productoExistente.setNombre(dto.getNombre());
         productoExistente.setDescripcion(dto.getDescripcion());
         productoExistente.setMarca(dto.getMarca());
         productoExistente.setStock(dto.getStock());
         productoExistente.setPrecioBase(dto.getPrecioBase());
+        productoExistente.setCategoria(categoria); // <- Asignación resuelta
 
         productoExistente = productoRepository.save(productoExistente);
         return mapearADto(productoExistente);

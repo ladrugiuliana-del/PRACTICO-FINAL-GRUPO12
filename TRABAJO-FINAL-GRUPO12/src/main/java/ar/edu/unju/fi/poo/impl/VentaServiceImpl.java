@@ -1,37 +1,25 @@
 package ar.edu.unju.fi.poo.impl;
 
-import ar.edu.unju.fi.poo.model.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import ar.edu.unju.fi.poo.dto.RespuestaCuotaDTO;
+import ar.edu.unju.fi.poo.entity.*;
 import ar.edu.unju.fi.poo.repository.*;
 import ar.edu.unju.fi.poo.service.VentaService;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class VentaServiceImpl implements VentaService {
 
-    @Autowired
-    private VentaRepository ventaRepository;
+    private final VentaRepository ventaRepository;
     private final ClienteRepository clienteRepository;
     private final ProductoRepository productoRepository;
     private final CuponRepository cuponRepository;
     private final CuotaRepository cuotaRepository;
-
-    public VentaServiceImpl(VentaRepository ventaRepository,
-                            ClienteRepository clienteRepository,
-                            ProductoRepository productoRepository,
-                            CuponRepository cuponRepository,
-                            CuotaRepository cuotaRepository) {
-        this.ventaRepository = ventaRepository;
-        this.clienteRepository = clienteRepository;
-        this.productoRepository = productoRepository;
-        this.cuponRepository = cuponRepository;
-        this.cuotaRepository = cuotaRepository;
-    }
 
     @Override
     public List<Venta> buscarVentasPorFecha(LocalDate inicio, LocalDate fin) {
@@ -44,8 +32,18 @@ public class VentaServiceImpl implements VentaService {
     }
 
     @Override
+    @Transactional
     public List<Cuota> consultarCuotasPendientesPorCliente(String clienteId) {
-        return cuotaRepository.findByFinanciadaClienteIdAndEstadoCuota(clienteId, "ADEUDADA");
+        List<Cuota> pendientes = cuotaRepository.findByFinanciadaClienteIdAndEstadoCuotaInOrderByNCuotaAsc(
+                clienteId, List.of("ADEUDADA", "VENCIDA")
+        );
+        // Actualiza automáticamente a VENCIDA aquellas cuya fecha ya expiró
+        for (Cuota c : pendientes) {
+            if (c.verificarVencimiento()) {
+                cuotaRepository.save(c);
+            }
+        }
+        return pendientes;
     }
 
     @Override
@@ -94,6 +92,68 @@ public class VentaServiceImpl implements VentaService {
         return ventaRepository.save(venta);
     }
 
+    // ENDPOINT DE COBRO DE CUOTA
+    @Override
+    @Transactional
+    public RespuestaCuotaDTO cobrarSiguienteCuota(String ventaId) {
+        Integer idVentaParsed;
+        try {
+            idVentaParsed = Integer.parseInt(ventaId);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("El identificador de la venta debe ser numérico: " + ventaId);
+        }
+
+        Venta venta = ventaRepository.findById(idVentaParsed)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Venta no encontrada con ID: " + ventaId));
+
+        if (!(venta instanceof Financiada financiada)) {
+            throw new IllegalStateException("La venta especificada es de contado y no posee plan de cuotas.");
+        }
+
+        if ("SALDADA".equalsIgnoreCase(financiada.getEstado())) {
+            throw new IllegalStateException("La venta ya se encuentra SALDADA; no tiene cuotas pendientes.");
+        }
+
+        // Ordena todas las cuotas por número correlativo estricto (1..6)
+        List<Cuota> cuotasOrdenadas = financiada.getCuotas().stream()
+                .sorted(java.util.Comparator.comparingInt(Cuota::getNCuota))
+                .toList();
+
+        // Obtiene la primera cuota impaga correlativa
+        Cuota cuotaACobrar = cuotasOrdenadas.stream()
+                .filter(Cuota::estaImpaga)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No quedan cuotas pendientes para esta venta (la venta ya se encuentra saldada)."));
+
+        // impedimos cobrar cuotas futuras si existiera alguna cuota anterior impaga
+        boolean existenAnterioresImpagas = cuotasOrdenadas.stream()
+                .anyMatch(c -> c.getNCuota() < cuotaACobrar.getNCuota() && c.estaImpaga());
+        if (existenAnterioresImpagas) {
+            throw new IllegalStateException("No se puede cobrar la cuota N° " + cuotaACobrar.getNCuota()
+                    + " porque existen cuotas anteriores impagas.");
+        }
+
+        //si superó el vencimiento, pasa automáticamente a VENCIDA antes de registrar el pago
+        cuotaACobrar.verificarVencimiento();
+
+        // Registra el pago (pasa a PAGADA)
+        cuotaACobrar.marcarComoPagada();
+        cuotaRepository.save(cuotaACobrar);
+
+        // Si fue la última cuota adeudada, cambia el estado general de la venta a SALDADA
+        financiada.actualizarEstado();
+        ventaRepository.save(financiada);
+
+        return new RespuestaCuotaDTO(
+                cuotaACobrar.getId(),
+                cuotaACobrar.getNCuota(),
+                cuotaACobrar.getImporte(),
+                cuotaACobrar.getFechaVencimiento(),
+                cuotaACobrar.getEstadoCuota(),
+                financiada.getCodigoComprobante()
+        );
+    }
+
     private void validarYActualizarStock(List<Detalle> detalles) {
         for (Detalle detalle : detalles) {
             Producto producto = productoRepository.findById(detalle.getProducto().getId())
@@ -116,6 +176,7 @@ public class VentaServiceImpl implements VentaService {
         }
         venta.setSubtotal(subtotalAcumulado);
     }
+
     @Override
     public List<Contado> buscarVentasContado() {
         return ventaRepository.findByTipoModalidad(Contado.class);

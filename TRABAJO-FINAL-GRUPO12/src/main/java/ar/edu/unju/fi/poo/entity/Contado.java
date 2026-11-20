@@ -1,18 +1,20 @@
-package ar.edu.unju.fi.poo.model;
+package ar.edu.unju.fi.poo.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @DiscriminatorValue("CONTADO")
+@Getter
+@NoArgsConstructor
 public class Contado extends Venta {
 
+    @Setter
     @ManyToOne
     @JoinColumn(name = "cupon_id")
     private Cupon cupon;
-
-    public Contado() {
-        super();
-    }
 
     @Override
     public void calcularTotal() {
@@ -23,7 +25,4 @@ public class Contado extends Venta {
             setTotal(getSubtotal());
         }
     }
-
-    public Cupon getCupon() { return cupon; }
-    public void setCupon(Cupon cupon) { this.cupon = cupon; }
 }

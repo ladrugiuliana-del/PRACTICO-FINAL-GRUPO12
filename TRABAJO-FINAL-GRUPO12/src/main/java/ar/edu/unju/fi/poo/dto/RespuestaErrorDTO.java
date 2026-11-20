@@ -1,7 +1,11 @@
 package ar.edu.unju.fi.poo.dto;
 
 import java.time.LocalDateTime;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@NoArgsConstructor
 public class RespuestaErrorDTO {
 
     private LocalDateTime timestamp;
@@ -17,19 +21,4 @@ public class RespuestaErrorDTO {
         this.mensaje = mensaje;
         this.ruta = ruta;
     }
-
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
-
-    public int getStatus() { return status; }
-    public void setStatus(int status) { this.status = status; }
-
-    public String getError() { return error; }
-    public void setError(String error) { this.error = error; }
-
-    public String getMensaje() { return mensaje; }
-    public void setMensaje(String mensaje) { this.mensaje = mensaje; }
-
-    public String getRuta() { return ruta; }
-    public void setRuta(String ruta) { this.ruta = ruta; }
 }

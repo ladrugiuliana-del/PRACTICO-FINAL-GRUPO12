@@ -1,23 +1,20 @@
 package ar.edu.unju.fi.poo.service;
 
 import java.util.List;
+
 import ar.edu.unju.fi.poo.dto.ClienteRequestDTO;
 import ar.edu.unju.fi.poo.dto.ClienteResponseDTO;
 import ar.edu.unju.fi.poo.dto.EstadoCuentaDTO;
-import ar.edu.unju.fi.poo.entity.Cliente;
 
 public interface ClienteService {
-    
-    Cliente registrarCliente(Cliente cliente);
-    List<Cliente> obtenerTodosLosClientes();
-    
-    Cliente buscarPorId(String id);
+
+    ClienteResponseDTO registrarCliente(ClienteRequestDTO dto);
+    List<ClienteResponseDTO> obtenerTodosLosClientes();
+    ClienteResponseDTO buscarPorId(String id);
     void eliminarCliente(String id);
-    
-    Cliente buscarPorDniOCuit(String documento);
-    List<Cliente> buscarPorNombreORazonSocial(String nombre);
-    
-    ClienteResponseDTO mapearADTO(Cliente cliente);
-    Cliente mapearAEntidad(ClienteRequestDTO dto);
+
+    List<ClienteResponseDTO> buscarPorDniOCuit(String documento);
+    List<ClienteResponseDTO> buscarPorNombreORazonSocial(String nombre);
+
     EstadoCuentaDTO consultarEstadoCuenta(String idCliente);
 }

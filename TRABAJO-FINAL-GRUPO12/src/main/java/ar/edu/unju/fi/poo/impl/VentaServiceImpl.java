@@ -1,10 +1,16 @@
 package ar.edu.unju.fi.poo.impl;
 
+import ar.edu.unju.fi.poo.dto.DetalleVentaRequestDTO;
 import ar.edu.unju.fi.poo.dto.RespuestaCuotaDTO;
+import ar.edu.unju.fi.poo.dto.RespuestaVentaHistorialDTO;
+import ar.edu.unju.fi.poo.dto.VentaRequestDTO;
 import ar.edu.unju.fi.poo.entity.*;
 import ar.edu.unju.fi.poo.repository.*;
 import ar.edu.unju.fi.poo.service.VentaService;
+import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -22,37 +28,55 @@ public class VentaServiceImpl implements VentaService {
     private final CuotaRepository cuotaRepository;
 
     @Override
-    public List<Venta> buscarVentasPorFecha(LocalDate inicio, LocalDate fin) {
-        return ventaRepository.findByFechaBetween(inicio, fin);
+    @Transactional(readOnly = true)
+    public List<RespuestaVentaHistorialDTO> buscarVentasPorFecha(LocalDate inicio, LocalDate fin) {
+        return ventaRepository.findByFechaBetween(inicio, fin).stream()
+                .map(this::mapearAVentaHistorialDTO)
+                .toList();
     }
 
     @Override
-    public List<Venta> buscarHistorialPorCliente(String clienteId) {
-        return ventaRepository.findByClienteId(clienteId);
+    @Transactional(readOnly = true)
+    public List<RespuestaVentaHistorialDTO> buscarHistorialPorCliente(String clienteId) {
+        if (!clienteRepository.existsById(clienteId)) {
+            throw new EntityNotFoundException("No se encontró el cliente con ID: " + clienteId);
+        }
+        return ventaRepository.findByClienteId(clienteId).stream()
+                .map(this::mapearAVentaHistorialDTO)
+                .toList();
     }
 
     @Override
     @Transactional
-    public List<Cuota> consultarCuotasPendientesPorCliente(String clienteId) {
+    public List<RespuestaCuotaDTO> consultarCuotasPendientesPorCliente(String clienteId) {
+        if (!clienteRepository.existsById(clienteId)) {
+            throw new EntityNotFoundException("No se encontró el cliente con ID: " + clienteId);
+        }
+
         List<Cuota> pendientes = cuotaRepository.findByFinanciadaClienteIdAndEstadoCuotaInOrderByNCuotaAsc(
                 clienteId, List.of("ADEUDADA", "VENCIDA")
         );
-        // Actualiza automáticamente a VENCIDA aquellas cuya fecha ya expiró
+
         for (Cuota c : pendientes) {
             if (c.verificarVencimiento()) {
                 cuotaRepository.save(c);
             }
         }
-        return pendientes;
+
+        return pendientes.stream()
+                .map(this::mapearACuotaDTO)
+                .toList();
     }
 
     @Override
     @Transactional
-    public Contado realizarVentaContado(String clienteId, List<Detalle> detalles, String codigoCupon) {
-        Cliente cliente = clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + clienteId));
+    public RespuestaVentaHistorialDTO realizarVentaContado(VentaRequestDTO dto) {
+        validarRequestVenta(dto);
 
-        validarYActualizarStock(detalles);
+        Cliente cliente = clienteRepository.findById(dto.getClienteId())
+                .orElseThrow(() -> new EntityNotFoundException("Cliente no encontrado: " + dto.getClienteId()));
+
+        List<Detalle> detalles = construirYValidarDetalles(dto.getDetalles());
 
         Contado venta = new Contado();
         venta.setCodigoComprobante(UUID.randomUUID().toString());
@@ -61,22 +85,24 @@ public class VentaServiceImpl implements VentaService {
 
         procesarDetallesYSubtotal(detalles, venta);
 
-        if (codigoCupon != null && !codigoCupon.isBlank()) {
-            Cupon cupon = cuponRepository.findByCodigo(codigoCupon).orElse(null);
+        if (dto.getCodigoCupon() != null && !dto.getCodigoCupon().isBlank()) {
+            Cupon cupon = cuponRepository.findByCodigo(dto.getCodigoCupon()).orElse(null);
             venta.setCupon(cupon);
         }
 
         venta.calcularTotal();
-        return ventaRepository.save(venta);
+        return mapearAVentaHistorialDTO(ventaRepository.save(venta));
     }
 
     @Override
     @Transactional
-    public Financiada realizarVentaFinanciada(String clienteId, List<Detalle> detalles, Integer porcentajeRecargo) {
-        Cliente cliente = clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + clienteId));
+    public RespuestaVentaHistorialDTO realizarVentaFinanciada(VentaRequestDTO dto, Integer porcentajeRecargo) {
+        validarRequestVenta(dto);
 
-        validarYActualizarStock(detalles);
+        Cliente cliente = clienteRepository.findById(dto.getClienteId())
+                .orElseThrow(() -> new EntityNotFoundException("Cliente no encontrado: " + dto.getClienteId()));
+
+        List<Detalle> detalles = construirYValidarDetalles(dto.getDetalles());
 
         Financiada venta = new Financiada();
         venta.setCodigoComprobante(UUID.randomUUID().toString());
@@ -89,7 +115,7 @@ public class VentaServiceImpl implements VentaService {
         venta.calcularTotal();
         venta.generarPlan6Cuotas();
 
-        return ventaRepository.save(venta);
+        return mapearAVentaHistorialDTO(ventaRepository.save(venta));
     }
 
     // ENDPOINT DE COBRO DE CUOTA
@@ -104,7 +130,7 @@ public class VentaServiceImpl implements VentaService {
         }
 
         Venta venta = ventaRepository.findById(idVentaParsed)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Venta no encontrada con ID: " + ventaId));
+                .orElseThrow(() -> new EntityNotFoundException("Venta no encontrada con ID: " + ventaId));
 
         if (!(venta instanceof Financiada financiada)) {
             throw new IllegalStateException("La venta especificada es de contado y no posee plan de cuotas.");
@@ -114,18 +140,15 @@ public class VentaServiceImpl implements VentaService {
             throw new IllegalStateException("La venta ya se encuentra SALDADA; no tiene cuotas pendientes.");
         }
 
-        // Ordena todas las cuotas por número correlativo estricto (1..6)
         List<Cuota> cuotasOrdenadas = financiada.getCuotas().stream()
-                .sorted(java.util.Comparator.comparingInt(Cuota::getNCuota))
+                .sorted(Comparator.comparingInt(Cuota::getNCuota))
                 .toList();
 
-        // Obtiene la primera cuota impaga correlativa
         Cuota cuotaACobrar = cuotasOrdenadas.stream()
                 .filter(Cuota::estaImpaga)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("No quedan cuotas pendientes para esta venta (la venta ya se encuentra saldada)."));
 
-        // impedimos cobrar cuotas futuras si existiera alguna cuota anterior impaga
         boolean existenAnterioresImpagas = cuotasOrdenadas.stream()
                 .anyMatch(c -> c.getNCuota() < cuotaACobrar.getNCuota() && c.estaImpaga());
         if (existenAnterioresImpagas) {
@@ -133,38 +156,51 @@ public class VentaServiceImpl implements VentaService {
                     + " porque existen cuotas anteriores impagas.");
         }
 
-        //si superó el vencimiento, pasa automáticamente a VENCIDA antes de registrar el pago
         cuotaACobrar.verificarVencimiento();
-
-        // Registra el pago (pasa a PAGADA)
         cuotaACobrar.marcarComoPagada();
         cuotaRepository.save(cuotaACobrar);
 
-        // Si fue la última cuota adeudada, cambia el estado general de la venta a SALDADA
         financiada.actualizarEstado();
         ventaRepository.save(financiada);
 
-        return new RespuestaCuotaDTO(
-                cuotaACobrar.getId(),
-                cuotaACobrar.getNCuota(),
-                cuotaACobrar.getImporte(),
-                cuotaACobrar.getFechaVencimiento(),
-                cuotaACobrar.getEstadoCuota(),
-                financiada.getCodigoComprobante()
-        );
+        return mapearACuotaDTO(cuotaACobrar);
     }
 
-    private void validarYActualizarStock(List<Detalle> detalles) {
-        for (Detalle detalle : detalles) {
-            Producto producto = productoRepository.findById(detalle.getProducto().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
-            
-            if (!producto.verificarStock(detalle.getCantidad())) {
+    private void validarRequestVenta(VentaRequestDTO dto) {
+        if (dto == null || dto.getClienteId() == null || dto.getClienteId().isBlank()) {
+            throw new IllegalArgumentException("El ID del cliente es obligatorio.");
+        }
+        if (dto.getDetalles() == null || dto.getDetalles().isEmpty()) {
+            throw new IllegalArgumentException("La venta debe incluir al menos un detalle de producto.");
+        }
+    }
+
+    private List<Detalle> construirYValidarDetalles(List<DetalleVentaRequestDTO> detallesDTO) {
+        List<Detalle> detallesConstruidos = new ArrayList<>();
+
+        for (DetalleVentaRequestDTO item : detallesDTO) {
+            if (item.getProductoId() == null || item.getCantidad() == null || item.getCantidad() <= 0) {
+                throw new IllegalArgumentException("Cada detalle debe indicar un productoId válido y una cantidad mayor a 0.");
+            }
+
+            Producto producto = productoRepository.findById(item.getProductoId())
+                    .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado con ID: " + item.getProductoId()));
+
+            if (!producto.verificarStock(item.getCantidad())) {
                 throw new IllegalStateException("Stock insuficiente para el producto: " + producto.getNombre());
             }
-            producto.actualizarStock(detalle.getCantidad());
+
+            producto.actualizarStock(item.getCantidad());
             productoRepository.save(producto);
+
+            Detalle detalle = new Detalle();
+            detalle.setProducto(producto);
+            detalle.setCantidad(item.getCantidad());
+            detalle.setPrecioBase(producto.getPrecioBase());
+            detallesConstruidos.add(detalle);
         }
+
+        return detallesConstruidos;
     }
 
     private void procesarDetallesYSubtotal(List<Detalle> detalles, Venta venta) {
@@ -177,13 +213,42 @@ public class VentaServiceImpl implements VentaService {
         venta.setSubtotal(subtotalAcumulado);
     }
 
-    @Override
-    public List<Contado> buscarVentasContado() {
-        return ventaRepository.findByTipoModalidad(Contado.class);
+    private RespuestaVentaHistorialDTO mapearAVentaHistorialDTO(Venta v) {
+        return new RespuestaVentaHistorialDTO(
+                v.getId(),
+                v.getCodigoComprobante(),
+                v.getFecha(),
+                (v instanceof Contado) ? "CONTADO" : "FINANCIADA",
+                v.getSubtotal(),
+                v.getTotal(),
+                (v.getDetalles() != null) ? v.getDetalles().size() : 0
+        );
+    }
+
+    private RespuestaCuotaDTO mapearACuotaDTO(Cuota c) {
+        return new RespuestaCuotaDTO(
+                c.getId(),
+                c.getNCuota(),
+                c.getImporte(),
+                c.getFechaVencimiento(),
+                c.getEstadoCuota(),
+                (c.getFinanciada() != null) ? c.getFinanciada().getCodigoComprobante() : null
+        );
     }
 
     @Override
-    public List<Financiada> buscarVentasFinanciadas() {
-        return ventaRepository.findByTipoModalidad(Financiada.class);
+    @Transactional(readOnly = true)
+    public List<RespuestaVentaHistorialDTO> buscarVentasContado() {
+        return ventaRepository.findByTipoModalidad(Contado.class).stream()
+                .map(this::mapearAVentaHistorialDTO)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RespuestaVentaHistorialDTO> buscarVentasFinanciadas() {
+        return ventaRepository.findByTipoModalidad(Financiada.class).stream()
+                .map(this::mapearAVentaHistorialDTO)
+                .toList();
     }
 }

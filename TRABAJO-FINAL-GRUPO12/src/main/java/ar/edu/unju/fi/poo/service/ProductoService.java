@@ -114,8 +114,11 @@ public class ProductoService {
 
     @Transactional
     public ProductoDto crear(ProductoDto dto) {
-        if (dto.getStock() < 0) {
-            throw new ProductoException(HttpStatus.BAD_REQUEST, "El stock no puede ser negativo");
+        if (dto == null || dto.getStock() < 0) {
+            throw new IllegalArgumentException("El stock no puede ser negativo");
+        }
+        if (dto.getCategoriaId() == null) {
+            throw new IllegalArgumentException("La categoría es obligatoria");
         }
 
         // Buscar la categoría obligatoria en la BD
@@ -128,7 +131,7 @@ public class ProductoService {
         producto.setMarca(dto.getMarca());
         producto.setStock(dto.getStock());
         producto.setPrecioBase(dto.getPrecioBase());
-        producto.setCategoria(categoria); // <- Asignación resuelta
+        producto.setCategoria(categoria);
 
         producto = productoRepository.save(producto);
         return mapearADto(producto);
@@ -136,8 +139,11 @@ public class ProductoService {
 
     @Transactional
     public ProductoDto actualizar(Integer id, ProductoDto dto) {
-        if (dto.getStock() < 0) {
-            throw new ProductoException(HttpStatus.BAD_REQUEST, "El stock no puede ser negativo");
+        if (dto == null || dto.getStock() < 0) {
+            throw new IllegalArgumentException("El stock no puede ser negativo");
+        }
+        if (dto.getCategoriaId() == null) {
+            throw new IllegalArgumentException("La categoría es obligatoria");
         }
 
         Producto productoExistente = buscarEntidadPorId(id);
@@ -151,7 +157,7 @@ public class ProductoService {
         productoExistente.setMarca(dto.getMarca());
         productoExistente.setStock(dto.getStock());
         productoExistente.setPrecioBase(dto.getPrecioBase());
-        productoExistente.setCategoria(categoria); // <- Asignación resuelta
+        productoExistente.setCategoria(categoria);
 
         productoExistente = productoRepository.save(productoExistente);
         return mapearADto(productoExistente);

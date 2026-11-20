@@ -1,11 +1,13 @@
 package ar.edu.unju.fi.poo.service;
 
+import ar.edu.unju.fi.poo.dto.DetalleVentaRequestDTO;
 import ar.edu.unju.fi.poo.dto.RespuestaCuotaDTO;
+import ar.edu.unju.fi.poo.dto.RespuestaVentaHistorialDTO;
+import ar.edu.unju.fi.poo.dto.VentaRequestDTO;
 import ar.edu.unju.fi.poo.entity.*;
 import ar.edu.unju.fi.poo.impl.VentaServiceImpl;
 import ar.edu.unju.fi.poo.repository.*;
 
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,7 +16,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,10 +42,10 @@ public class VentaServiceImplTest {
 
     @InjectMocks
     private VentaServiceImpl ventaService;
-    
+
     private Particular cliente;
     private Producto producto;
-    private Detalle detalle;
+    private DetalleVentaRequestDTO detalleDTO;
     private Categoria categoria;
 
     @BeforeEach
@@ -57,48 +58,59 @@ public class VentaServiceImplTest {
         categoria = new Categoria(1, "Electrónica");
         producto = new Producto(1, "Smart TV", "Televisor 4K", "Samsung", categoria, 10, 100000.0);
 
-        detalle = new Detalle();
-        detalle.setProducto(producto);
-        detalle.setCantidad(2);
-        detalle.setPrecioBase(producto.getPrecioBase());
+        detalleDTO = new DetalleVentaRequestDTO(1, 2);
     }
 
     @Test
     void testBuscarVentasPorFecha() {
         LocalDate inicio = LocalDate.of(2026, 11, 1);
         LocalDate fin = LocalDate.of(2026, 11, 30);
-        List<Venta> ventasSimuladas = new ArrayList<>();
-        
-        when(ventaRepository.findByFechaBetween(inicio, fin)).thenReturn(ventasSimuladas);
 
-        List<Venta> resultado = ventaService.buscarVentasPorFecha(inicio, fin);
+        Contado venta = new Contado();
+        venta.setCodigoComprobante("C-001");
+        venta.setFecha(LocalDate.of(2026, 11, 10));
+        venta.setSubtotal(100000.0);
+        venta.setTotal(100000.0);
 
-        assertNotNull(resultado, "La lista de resultados no debería ser nula");
-        assertEquals(ventasSimuladas, resultado, "Las ventas devueltas deben coincidir");
+        when(ventaRepository.findByFechaBetween(inicio, fin)).thenReturn(List.of(venta));
+
+        List<RespuestaVentaHistorialDTO> resultado = ventaService.buscarVentasPorFecha(inicio, fin);
+
+        assertNotNull(resultado);
+        assertEquals(1, resultado.size());
+        assertEquals("C-001", resultado.get(0).getCodigoComprobante());
     }
 
     @Test
     void testBuscarHistorialPorCliente() {
-        String idClienteFalso = "40123456";
-        List<Venta> historialSimulado = new ArrayList<>();
-        
-        when(ventaRepository.findByClienteId(idClienteFalso)).thenReturn(historialSimulado);
+        String clienteId = "20391234567";
+        Financiada venta = new Financiada();
+        venta.setCodigoComprobante("F-002");
+        venta.setFecha(LocalDate.now());
+        venta.setSubtotal(100000.0);
+        venta.setTotal(115000.0);
 
-        List<Venta> resultado = ventaService.buscarHistorialPorCliente(idClienteFalso);
+        when(clienteRepository.existsById(clienteId)).thenReturn(true);
+        when(ventaRepository.findByClienteId(clienteId)).thenReturn(List.of(venta));
 
-        assertNotNull(resultado, "El historial no debe ser nulo");
-        assertEquals(historialSimulado, resultado, "Debe devolver las ventas de ese cliente");
+        List<RespuestaVentaHistorialDTO> resultado = ventaService.buscarHistorialPorCliente(clienteId);
+
+        assertNotNull(resultado);
+        assertEquals(1, resultado.size());
+        assertEquals("FINANCIADA", resultado.get(0).getModalidadPago());
     }
+
     @Test
     void realizarVentaContado_ConCuponValido_AplicaDescuentoYActualizaStock() {
         Cupon cupon = new Cupon("DESC10", 10, LocalDate.now().plusDays(10));
+        VentaRequestDTO request = new VentaRequestDTO("20391234567", "CONTADO", "DESC10", List.of(detalleDTO));
 
         when(clienteRepository.findById("20391234567")).thenReturn(Optional.of(cliente));
         when(productoRepository.findById(1)).thenReturn(Optional.of(producto));
         when(cuponRepository.findByCodigo("DESC10")).thenReturn(Optional.of(cupon));
         when(ventaRepository.save(any(Contado.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Contado resultado = ventaService.realizarVentaContado("20391234567", List.of(detalle), "DESC10");
+        RespuestaVentaHistorialDTO resultado = ventaService.realizarVentaContado(request);
 
         assertNotNull(resultado);
         assertEquals(200000.0, resultado.getSubtotal(), 0.01);
@@ -109,74 +121,78 @@ public class VentaServiceImplTest {
     @Test
     void realizarVentaFinanciada_CalcularRecargoYGeneraPlan6Cuotas() {
         Integer recargo = 20;
+        VentaRequestDTO request = new VentaRequestDTO("20391234567", "FINANCIADA", null, List.of(detalleDTO));
 
         when(clienteRepository.findById("20391234567")).thenReturn(Optional.of(cliente));
         when(productoRepository.findById(1)).thenReturn(Optional.of(producto));
-        when(ventaRepository.save(any(Financiada.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(ventaRepository.save(any(Financiada.class))).thenAnswer(invocation -> {
+            Financiada f = invocation.getArgument(0);
+            assertEquals(6, f.getCuotas().size());
+            for (int i = 0; i < 6; i++) {
+                Cuota c = f.getCuotas().get(i);
+                assertEquals(i + 1, c.getNCuota());
+                assertEquals(40000.0, c.getImporte(), 0.01);
+                assertEquals("ADEUDADA", c.getEstadoCuota());
+                assertEquals(LocalDate.now().plusMonths(i + 1), c.getFechaVencimiento());
+            }
+            return f;
+        });
 
-        Financiada resultado = ventaService.realizarVentaFinanciada("20391234567", List.of(detalle), recargo);
+        RespuestaVentaHistorialDTO resultado = ventaService.realizarVentaFinanciada(request, recargo);
 
         assertNotNull(resultado);
         assertEquals(200000.0, resultado.getSubtotal(), 0.01);
         assertEquals(240000.0, resultado.getTotal(), 0.01);
-
-        List<Cuota> cuotas = resultado.getCuotas();
-        assertEquals(6, cuotas.size());
-
-        for (int i = 0; i < 6; i++) {
-            Cuota c = cuotas.get(i);
-            assertEquals(i + 1, c.getNCuota());
-            assertEquals(40000.0, c.getImporte(), 0.01);
-            assertEquals("ADEUDADA", c.getEstadoCuota());
-            assertEquals(LocalDate.now().plusMonths(i + 1), c.getFechaVencimiento());
-        }
     }
 
     @Test
     void realizarVenta_StockInsuficiente_LanzaExcepcion() {
-        detalle.setCantidad(15);
+        detalleDTO.setCantidad(15);
+        VentaRequestDTO request = new VentaRequestDTO("20391234567", "CONTADO", null, List.of(detalleDTO));
 
         when(clienteRepository.findById("20391234567")).thenReturn(Optional.of(cliente));
         when(productoRepository.findById(1)).thenReturn(Optional.of(producto));
 
         assertThrows(IllegalStateException.class, () ->
-            ventaService.realizarVentaContado("20391234567", List.of(detalle), null)
+            ventaService.realizarVentaContado(request)
         );
     }
-    
+
     @Test
     void testBuscarVentasContado() {
-        List<Contado> ventasContadoSimuladas = List.of(new Contado());
-        when(ventaRepository.findByTipoModalidad(Contado.class)).thenReturn(ventasContadoSimuladas);
+        Contado venta = new Contado();
+        venta.setCodigoComprobante("C-003");
+        venta.setFecha(LocalDate.now());
+        when(ventaRepository.findByTipoModalidad(Contado.class)).thenReturn(List.of(venta));
 
-        List<Contado> resultado = ventaService.buscarVentasContado();
+        List<RespuestaVentaHistorialDTO> resultado = ventaService.buscarVentasContado();
 
-        assertNotNull(resultado, "La lista de ventas al contado no debe ser nula");
+        assertNotNull(resultado);
         assertEquals(1, resultado.size());
-        assertEquals(ventasContadoSimuladas, resultado);
         verify(ventaRepository, times(1)).findByTipoModalidad(Contado.class);
     }
 
     @Test
     void testBuscarVentasFinanciadas() {
-        List<Financiada> ventasFinanciadasSimuladas = List.of(new Financiada());
-        when(ventaRepository.findByTipoModalidad(Financiada.class)).thenReturn(ventasFinanciadasSimuladas);
+        Financiada venta = new Financiada();
+        venta.setCodigoComprobante("F-004");
+        venta.setFecha(LocalDate.now());
+        when(ventaRepository.findByTipoModalidad(Financiada.class)).thenReturn(List.of(venta));
 
-        List<Financiada> resultado = ventaService.buscarVentasFinanciadas();
+        List<RespuestaVentaHistorialDTO> resultado = ventaService.buscarVentasFinanciadas();
 
-        assertNotNull(resultado, "La lista de ventas financiadas no debe ser nula");
+        assertNotNull(resultado);
         assertEquals(1, resultado.size());
-        assertEquals(ventasFinanciadasSimuladas, resultado);
         verify(ventaRepository, times(1)).findByTipoModalidad(Financiada.class);
     }
-    
+
     @Test
     void cobrarSiguienteCuota_CuotaVencida_ActualizaAVencidaYLuegoPagada() {
         Financiada venta = new Financiada();
         venta.setCodigoComprobante("COMP-001");
         venta.setTotal(60000.0);
         venta.setFecha(LocalDate.now().minusMonths(2));
-        venta.generarPlan6Cuotas(); // Cuota 1 tiene vencimiento hace 1 mes
+        venta.generarPlan6Cuotas();
 
         when(ventaRepository.findById(10)).thenReturn(Optional.of(venta));
 
@@ -194,7 +210,6 @@ public class VentaServiceImplTest {
         venta.setTotal(60000.0);
         venta.setFecha(LocalDate.now());
         venta.generarPlan6Cuotas();
-        // Marcamos las primeras 5 como pagadas
         for (int i = 0; i < 5; i++) {
             venta.getCuotas().get(i).marcarComoPagada();
         }

@@ -1,11 +1,10 @@
 package ar.edu.unju.fi.poo.service;
 
-import ar.edu.unju.fi.poo.entity.Cliente;
-import ar.edu.unju.fi.poo.entity.Empresa;
+import ar.edu.unju.fi.poo.dto.ClienteRequestDTO;
+import ar.edu.unju.fi.poo.dto.ClienteResponseDTO;
 import ar.edu.unju.fi.poo.entity.Particular;
 import ar.edu.unju.fi.poo.exceptions.ClienteDuplicadoException;
 import ar.edu.unju.fi.poo.repository.ClienteRepository;
-import ar.edu.unju.fi.poo.repository.ParticularRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,38 +24,36 @@ class ClienteServiceTest {
     @Autowired
     private ClienteRepository clienteRepo;
 
-    @Autowired
-    private ParticularRepository particularRepo;
-
     @Test
     void testRegistrarClienteExitoso() {
-        Particular cliente = new Particular();
-        cliente.setId("20401234567");
-        cliente.setDni("40123456");
-        cliente.setNombre("Juan");
-        cliente.setApellido("Perez");
-        cliente.setEmail("juan.test@gmail.com");
-        cliente.setTelefono("3884123456");
-        cliente.setDireccion("Av. Belgrano 123");
+        ClienteRequestDTO dto = new ClienteRequestDTO();
+        dto.setTipoCliente("PARTICULAR");
+        dto.setDni("40123456");
+        dto.setNombre("Juan");
+        dto.setApellido("Perez");
+        dto.setEmail("juan.test@gmail.com");
+        dto.setTelefono("3884123456");
+        dto.setDireccion("Av. Belgrano 123");
 
-        Cliente resultado = clienteService.registrarCliente(cliente);
+        ClienteResponseDTO resultado = clienteService.registrarCliente(dto);
 
         assertNotNull(resultado);
         assertEquals("juan.test@gmail.com", resultado.getEmail());
+        assertEquals("PARTICULAR", resultado.getTipoCliente());
     }
 
     @Test
     void testRegistrarClienteEmailDuplicado() {
-        Empresa empresa1 = new Empresa();
-        empresa1.setId("30701234567");
+        ClienteRequestDTO empresa1 = new ClienteRequestDTO();
+        empresa1.setTipoCliente("EMPRESA");
         empresa1.setRazonSocial("Limpieza SRL");
         empresa1.setEmail("duplicado@empresa.com");
         empresa1.setTelefono("3884111111");
         empresa1.setDireccion("Calle 1");
         clienteService.registrarCliente(empresa1);
 
-        Empresa empresa2 = new Empresa();
-        empresa2.setId("30709876543");
+        ClienteRequestDTO empresa2 = new ClienteRequestDTO();
+        empresa2.setTipoCliente("EMPRESA");
         empresa2.setRazonSocial("Otra SRL");
         empresa2.setEmail("duplicado@empresa.com");
         empresa2.setTelefono("3884222222");
@@ -70,7 +67,7 @@ class ClienteServiceTest {
     @Test
     void testBuscarClientePorId() {
         Particular cliente = new Particular();
-        cliente.setId("20501234567");
+        cliente.setId("50123456");
         cliente.setDni("50123456");
         cliente.setNombre("Maria");
         cliente.setApellido("Gomez");
@@ -79,16 +76,16 @@ class ClienteServiceTest {
         cliente.setDireccion("Calle 3");
         clienteRepo.save(cliente);
 
-        Cliente resultado = clienteService.buscarPorId("20501234567");
+        ClienteResponseDTO resultado = clienteService.buscarPorId("50123456");
 
         assertNotNull(resultado);
-        assertEquals("Maria", ((Particular) resultado).getNombre());
+        assertEquals("Maria Gomez", resultado.getNombreORazonSocial());
     }
 
     @Test
     void testBuscarPorDniOCuit() {
         Particular cliente = new Particular();
-        cliente.setId("20601234567");
+        cliente.setId("60123456");
         cliente.setDni("60123456");
         cliente.setNombre("Carlos");
         cliente.setApellido("Ruiz");
@@ -97,16 +94,16 @@ class ClienteServiceTest {
         cliente.setDireccion("Calle 4");
         clienteRepo.save(cliente);
 
-        Cliente resultado = clienteService.buscarPorDniOCuit("60123456");
+        List<ClienteResponseDTO> resultado = clienteService.buscarPorDniOCuit("60123456");
 
-        assertNotNull(resultado);
-        assertEquals("Carlos", ((Particular) resultado).getNombre());
+        assertFalse(resultado.isEmpty());
+        assertEquals("Carlos Ruiz", resultado.get(0).getNombreORazonSocial());
     }
 
     @Test
     void testBuscarPorNombreORazonSocial() {
         Particular p = new Particular();
-        p.setId("20701234567");
+        p.setId("70123456");
         p.setDni("70123456");
         p.setNombre("Carlos");
         p.setApellido("Gomez");
@@ -115,7 +112,7 @@ class ClienteServiceTest {
         p.setDireccion("Calle 5");
         clienteRepo.save(p);
 
-        List<Cliente> resultado = clienteService.buscarPorNombreORazonSocial("Carlos");
+        List<ClienteResponseDTO> resultado = clienteService.buscarPorNombreORazonSocial("Carlos");
 
         assertFalse(resultado.isEmpty());
     }

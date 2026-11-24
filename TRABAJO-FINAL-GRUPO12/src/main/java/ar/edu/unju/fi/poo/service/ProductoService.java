@@ -4,9 +4,9 @@ import ar.edu.unju.fi.poo.dto.ProductoDto;
 import ar.edu.unju.fi.poo.entity.Categoria;
 import ar.edu.unju.fi.poo.entity.Producto;
 import ar.edu.unju.fi.poo.exceptions.ProductoException;
+import ar.edu.unju.fi.poo.mapper.ProductoMapper;
 import ar.edu.unju.fi.poo.repository.ProductoRepository;
 import ar.edu.unju.fi.poo.repository.CategoriaRepository;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +20,7 @@ public class ProductoService {
 
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
+    private final ProductoMapper productoMapper;
 
     // MÉTODOS ORIGINALES (TP10) no tocar si lo hace se rompe todo xd
 
@@ -55,49 +56,26 @@ public class ProductoService {
     public void gestionarStock(Integer productoId, int cantidadVendida) {
         Producto producto = productoRepository.findById(productoId)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + productoId));
-        
+
         producto.actualizarStock(cantidadVendida);
         productoRepository.save(producto);
     }
 
     // NUEVOS MÉTODOS PARA LA API REST (TP11) - CON PATRÓN DTO (mi parte la del integrante 2 uwu)
 
-    private ProductoDto mapearADto(Producto producto) {
-        ProductoDto dto = new ProductoDto();
-        dto.setId(producto.getId());
-        dto.setNombre(producto.getNombre());
-        dto.setDescripcion(producto.getDescripcion());
-        dto.setMarca(producto.getMarca());
-        dto.setStock(producto.getStock());
-        dto.setPrecioBase(producto.getPrecioBase());
-        
-        if (producto.getCategoria() != null) {
-            dto.setCategoriaId(producto.getCategoria().getId());
-        }
-        return dto;
-    }
-
-    private List<ProductoDto> mapearLista(List<Producto> productos) {
-        List<ProductoDto> dtos = new ArrayList<>();
-        for (Producto p : productos) {
-            dtos.add(mapearADto(p));
-        }
-        return dtos;
-    }
-
     @Transactional(readOnly = true)
     public List<ProductoDto> listar() {
-        return mapearLista(productoRepository.findAll());
+        return productoMapper.toDTOList(productoRepository.findAll());
     }
 
     @Transactional(readOnly = true)
     public List<ProductoDto> filtrarProductos(Integer categoriaId, String marca, Double precioMin, Double precioMax) {
-        return mapearLista(productoRepository.filtrarProductos(categoriaId, marca, precioMin, precioMax));
+        return productoMapper.toDTOList(productoRepository.filtrarProductos(categoriaId, marca, precioMin, precioMax));
     }
 
     @Transactional(readOnly = true)
     public List<ProductoDto> buscarPorStockCritico(Integer umbral) {
-        return mapearLista(productoRepository.findProductosStockCritico(umbral)); 
+        return productoMapper.toDTOList(productoRepository.findProductosStockCritico(umbral));
     }
 
     @Transactional(readOnly = true)
@@ -109,7 +87,7 @@ public class ProductoService {
 
     @Transactional(readOnly = true)
     public ProductoDto buscarPorIdDto(Integer id) {
-        return mapearADto(buscarEntidadPorId(id));
+        return productoMapper.toDTO(buscarEntidadPorId(id));
     }
 
     @Transactional
@@ -121,20 +99,12 @@ public class ProductoService {
             throw new IllegalArgumentException("La categoría es obligatoria");
         }
 
-        // Buscar la categoría obligatoria en la BD
         Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
                 .orElseThrow(() -> new ProductoException(HttpStatus.NOT_FOUND, "Categoría no encontrada con ID: " + dto.getCategoriaId()));
 
-        Producto producto = new Producto();
-        producto.setNombre(dto.getNombre());
-        producto.setDescripcion(dto.getDescripcion());
-        producto.setMarca(dto.getMarca());
-        producto.setStock(dto.getStock());
-        producto.setPrecioBase(dto.getPrecioBase());
-        producto.setCategoria(categoria);
-
+        Producto producto = productoMapper.toEntity(dto, categoria);
         producto = productoRepository.save(producto);
-        return mapearADto(producto);
+        return productoMapper.toDTO(producto);
     }
 
     @Transactional
@@ -148,19 +118,12 @@ public class ProductoService {
 
         Producto productoExistente = buscarEntidadPorId(id);
 
-        // Buscar la categoría para la actualización también
         Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
                 .orElseThrow(() -> new ProductoException(HttpStatus.NOT_FOUND, "Categoría no encontrada con ID: " + dto.getCategoriaId()));
 
-        productoExistente.setNombre(dto.getNombre());
-        productoExistente.setDescripcion(dto.getDescripcion());
-        productoExistente.setMarca(dto.getMarca());
-        productoExistente.setStock(dto.getStock());
-        productoExistente.setPrecioBase(dto.getPrecioBase());
-        productoExistente.setCategoria(categoria);
-
+        productoMapper.updateEntity(productoExistente, dto, categoria);
         productoExistente = productoRepository.save(productoExistente);
-        return mapearADto(productoExistente);
+        return productoMapper.toDTO(productoExistente);
     }
 
     @Transactional

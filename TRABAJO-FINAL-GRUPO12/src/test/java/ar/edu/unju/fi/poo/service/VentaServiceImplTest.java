@@ -6,6 +6,7 @@ import ar.edu.unju.fi.poo.dto.RespuestaVentaHistorialDTO;
 import ar.edu.unju.fi.poo.dto.VentaRequestDTO;
 import ar.edu.unju.fi.poo.entity.*;
 import ar.edu.unju.fi.poo.impl.VentaServiceImpl;
+import ar.edu.unju.fi.poo.mapper.VentaMapper;
 import ar.edu.unju.fi.poo.repository.*;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +41,9 @@ public class VentaServiceImplTest {
 
     @Mock
     private CuotaRepository cuotaRepository;
+
+    @Mock
+    private VentaMapper ventaMapper;
 
     @InjectMocks
     private VentaServiceImpl ventaService;
@@ -72,7 +77,12 @@ public class VentaServiceImplTest {
         venta.setSubtotal(100000.0);
         venta.setTotal(100000.0);
 
+        RespuestaVentaHistorialDTO dtoEsperado = new RespuestaVentaHistorialDTO(
+                1, "C-001", LocalDate.of(2026, 11, 10), "CONTADO", 100000.0, 100000.0, 1
+        );
+
         when(ventaRepository.findByFechaBetween(inicio, fin)).thenReturn(List.of(venta));
+        when(ventaMapper.toHistorialDTO(venta)).thenReturn(dtoEsperado);
 
         List<RespuestaVentaHistorialDTO> resultado = ventaService.buscarVentasPorFecha(inicio, fin);
 
@@ -90,8 +100,13 @@ public class VentaServiceImplTest {
         venta.setSubtotal(100000.0);
         venta.setTotal(115000.0);
 
+        RespuestaVentaHistorialDTO dtoEsperado = new RespuestaVentaHistorialDTO(
+                2, "F-002", LocalDate.now(), "FINANCIADA", 100000.0, 115000.0, 1
+        );
+
         when(clienteRepository.existsById(clienteId)).thenReturn(true);
         when(ventaRepository.findByClienteId(clienteId)).thenReturn(List.of(venta));
+        when(ventaMapper.toHistorialDTO(venta)).thenReturn(dtoEsperado);
 
         List<RespuestaVentaHistorialDTO> resultado = ventaService.buscarHistorialPorCliente(clienteId);
 
@@ -101,7 +116,7 @@ public class VentaServiceImplTest {
     }
 
     @Test
-    void realizarVentaContado_ConCuponValido_AplicaDescuentoYActualizaStock() {
+    void registrarVenta_ContadoConCuponValido_AplicaDescuentoYActualizaStock() {
         Cupon cupon = new Cupon("DESC10", 10, LocalDate.now().plusDays(10));
         VentaRequestDTO request = new VentaRequestDTO("20391234567", "CONTADO", "DESC10", List.of(detalleDTO));
 
@@ -109,8 +124,15 @@ public class VentaServiceImplTest {
         when(productoRepository.findById(1)).thenReturn(Optional.of(producto));
         when(cuponRepository.findByCodigo("DESC10")).thenReturn(Optional.of(cupon));
         when(ventaRepository.save(any(Contado.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(ventaMapper.toHistorialDTO(any(Venta.class))).thenAnswer(invocation -> {
+            Venta v = invocation.getArgument(0);
+            return new RespuestaVentaHistorialDTO(
+                    v.getId(), v.getCodigoComprobante(), v.getFecha(), "CONTADO",
+                    v.getSubtotal(), v.getTotal(), v.getDetalles().size()
+            );
+        });
 
-        RespuestaVentaHistorialDTO resultado = ventaService.realizarVentaContado(request);
+        RespuestaVentaHistorialDTO resultado = ventaService.registrarVenta(request);
 
         assertNotNull(resultado);
         assertEquals(200000.0, resultado.getSubtotal(), 0.01);
@@ -119,8 +141,7 @@ public class VentaServiceImplTest {
     }
 
     @Test
-    void realizarVentaFinanciada_CalcularRecargoYGeneraPlan6Cuotas() {
-        Integer recargo = 20;
+    void registrarVenta_Financiada_CalculaRecargoYGeneraPlan6Cuotas() {
         VentaRequestDTO request = new VentaRequestDTO("20391234567", "FINANCIADA", null, List.of(detalleDTO));
 
         when(clienteRepository.findById("20391234567")).thenReturn(Optional.of(cliente));
@@ -131,22 +152,29 @@ public class VentaServiceImplTest {
             for (int i = 0; i < 6; i++) {
                 Cuota c = f.getCuotas().get(i);
                 assertEquals(i + 1, c.getNCuota());
-                assertEquals(40000.0, c.getImporte(), 0.01);
+                assertEquals(38333.33, c.getImporte(), 0.01);
                 assertEquals("ADEUDADA", c.getEstadoCuota());
                 assertEquals(LocalDate.now().plusMonths(i + 1), c.getFechaVencimiento());
             }
             return f;
         });
+        when(ventaMapper.toHistorialDTO(any(Venta.class))).thenAnswer(invocation -> {
+            Venta v = invocation.getArgument(0);
+            return new RespuestaVentaHistorialDTO(
+                    v.getId(), v.getCodigoComprobante(), v.getFecha(), "FINANCIADA",
+                    v.getSubtotal(), v.getTotal(), v.getDetalles().size()
+            );
+        });
 
-        RespuestaVentaHistorialDTO resultado = ventaService.realizarVentaFinanciada(request, recargo);
+        RespuestaVentaHistorialDTO resultado = ventaService.registrarVenta(request);
 
         assertNotNull(resultado);
         assertEquals(200000.0, resultado.getSubtotal(), 0.01);
-        assertEquals(240000.0, resultado.getTotal(), 0.01);
+        assertEquals(230000.0, resultado.getTotal(), 0.01);
     }
 
     @Test
-    void realizarVenta_StockInsuficiente_LanzaExcepcion() {
+    void registrarVenta_StockInsuficiente_LanzaExcepcion() {
         detalleDTO.setCantidad(15);
         VentaRequestDTO request = new VentaRequestDTO("20391234567", "CONTADO", null, List.of(detalleDTO));
 
@@ -154,7 +182,7 @@ public class VentaServiceImplTest {
         when(productoRepository.findById(1)).thenReturn(Optional.of(producto));
 
         assertThrows(IllegalStateException.class, () ->
-            ventaService.realizarVentaContado(request)
+            ventaService.registrarVenta(request)
         );
     }
 
@@ -163,7 +191,12 @@ public class VentaServiceImplTest {
         Contado venta = new Contado();
         venta.setCodigoComprobante("C-003");
         venta.setFecha(LocalDate.now());
+        RespuestaVentaHistorialDTO dto = new RespuestaVentaHistorialDTO(
+                3, "C-003", LocalDate.now(), "CONTADO", 0.0, 0.0, 0
+        );
+
         when(ventaRepository.findByTipoModalidad(Contado.class)).thenReturn(List.of(venta));
+        when(ventaMapper.toHistorialDTO(venta)).thenReturn(dto);
 
         List<RespuestaVentaHistorialDTO> resultado = ventaService.buscarVentasContado();
 
@@ -177,7 +210,12 @@ public class VentaServiceImplTest {
         Financiada venta = new Financiada();
         venta.setCodigoComprobante("F-004");
         venta.setFecha(LocalDate.now());
+        RespuestaVentaHistorialDTO dto = new RespuestaVentaHistorialDTO(
+                4, "F-004", LocalDate.now(), "FINANCIADA", 0.0, 0.0, 0
+        );
+
         when(ventaRepository.findByTipoModalidad(Financiada.class)).thenReturn(List.of(venta));
+        when(ventaMapper.toHistorialDTO(venta)).thenReturn(dto);
 
         List<RespuestaVentaHistorialDTO> resultado = ventaService.buscarVentasFinanciadas();
 
@@ -194,7 +232,12 @@ public class VentaServiceImplTest {
         venta.setFecha(LocalDate.now().minusMonths(2));
         venta.generarPlan6Cuotas();
 
+        RespuestaCuotaDTO dtoEsperado = new RespuestaCuotaDTO(
+                1, 1, 10000.0, LocalDate.now().minusMonths(1), "PAGADA", "COMP-001"
+        );
+
         when(ventaRepository.findById(10)).thenReturn(Optional.of(venta));
+        when(ventaMapper.toCuotaDTO(any(Cuota.class))).thenReturn(dtoEsperado);
 
         RespuestaCuotaDTO resultado = ventaService.cobrarSiguienteCuota("10");
 
@@ -214,7 +257,12 @@ public class VentaServiceImplTest {
             venta.getCuotas().get(i).marcarComoPagada();
         }
 
+        RespuestaCuotaDTO dtoEsperado = new RespuestaCuotaDTO(
+                6, 6, 10000.0, LocalDate.now().plusMonths(6), "PAGADA", "COMP-002"
+        );
+
         when(ventaRepository.findById(11)).thenReturn(Optional.of(venta));
+        when(ventaMapper.toCuotaDTO(any(Cuota.class))).thenReturn(dtoEsperado);
 
         RespuestaCuotaDTO resultado = ventaService.cobrarSiguienteCuota("11");
 

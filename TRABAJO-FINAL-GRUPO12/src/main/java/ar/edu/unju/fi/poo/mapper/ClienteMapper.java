@@ -37,6 +37,7 @@ public class ClienteMapper {
             return p;
         } else if ("EMPRESA".equalsIgnoreCase(dto.getTipoCliente())) {
             Empresa e = new Empresa();
+            e.setId(dto.getCuit());
             e.setEmail(dto.getEmail());
             e.setTelefono(dto.getTelefono());
             e.setDireccion(dto.getDireccion());
@@ -58,7 +59,7 @@ public class ClienteMapper {
             dto.setNombreORazonSocial(p.getNombre() + " " + p.getApellido());
         } else if (cliente instanceof Empresa e) {
             dto.setTipoCliente("EMPRESA");
-            dto.setIdentificacion("Sin CUIT registrado");
+            dto.setIdentificacion(e.getId() != null ? e.getId() : "Sin CUIT registrado");
             dto.setNombreORazonSocial(e.getRazonSocial());
         }
 

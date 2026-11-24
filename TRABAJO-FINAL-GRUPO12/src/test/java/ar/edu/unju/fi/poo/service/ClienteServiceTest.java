@@ -46,6 +46,7 @@ class ClienteServiceTest {
     void testRegistrarClienteEmailDuplicado() {
         ClienteRequestDTO empresa1 = new ClienteRequestDTO();
         empresa1.setTipoCliente("EMPRESA");
+        empresa1.setCuit("30111111119");
         empresa1.setRazonSocial("Limpieza SRL");
         empresa1.setEmail("duplicado@empresa.com");
         empresa1.setTelefono("3884111111");
@@ -54,6 +55,7 @@ class ClienteServiceTest {
 
         ClienteRequestDTO empresa2 = new ClienteRequestDTO();
         empresa2.setTipoCliente("EMPRESA");
+        empresa2.setCuit("30222222229");
         empresa2.setRazonSocial("Otra SRL");
         empresa2.setEmail("duplicado@empresa.com");
         empresa2.setTelefono("3884222222");

@@ -70,6 +70,22 @@ public class VentaServiceImpl implements VentaService {
 
     @Override
     @Transactional
+    public RespuestaVentaHistorialDTO registrarVenta(VentaRequestDTO dto) {
+        if (dto == null || dto.getTipoPago() == null) {
+            throw new IllegalArgumentException("El tipo de pago es obligatorio.");
+        }
+
+        if ("CONTADO".equalsIgnoreCase(dto.getTipoPago())) {
+            return realizarVentaContado(dto);
+        } else if ("FINANCIADA".equalsIgnoreCase(dto.getTipoPago())) {
+            return realizarVentaFinanciada(dto, 15);
+        } else {
+            throw new IllegalArgumentException("Tipo de pago no válido: " + dto.getTipoPago());
+        }
+    }
+
+    @Override
+    @Transactional
     public RespuestaVentaHistorialDTO realizarVentaContado(VentaRequestDTO dto) {
         validarRequestVenta(dto);
 
@@ -118,7 +134,7 @@ public class VentaServiceImpl implements VentaService {
         return mapearAVentaHistorialDTO(ventaRepository.save(venta));
     }
 
-    // ENDPOINT DE COBRO DE CUOTA
+    // Endpoint de cobro de cuota
     @Override
     @Transactional
     public RespuestaCuotaDTO cobrarSiguienteCuota(String ventaId) {

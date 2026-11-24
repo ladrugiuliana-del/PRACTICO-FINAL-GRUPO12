@@ -12,6 +12,7 @@ public interface VentaService {
     List<RespuestaVentaHistorialDTO> buscarVentasPorFecha(LocalDate inicio, LocalDate fin);
     List<RespuestaVentaHistorialDTO> buscarHistorialPorCliente(String clienteId);
 
+    RespuestaVentaHistorialDTO registrarVenta(VentaRequestDTO dto);
     RespuestaVentaHistorialDTO realizarVentaContado(VentaRequestDTO dto);
     RespuestaVentaHistorialDTO realizarVentaFinanciada(VentaRequestDTO dto, Integer porcentajeRecargo);
 

@@ -32,18 +32,11 @@ public class VentaController {
 
 	private final VentaService service;
 
-	@Operation(summary = "Registrar venta al contado", description = "Crea una nueva venta en modalidad contado.")
-	@PostMapping("/contado")
-	public ResponseEntity<RespuestaVentaHistorialDTO> registrarContado(@RequestBody VentaRequestDTO dto) {
-		RespuestaVentaHistorialDTO nuevaVenta = service.realizarVentaContado(dto);
-		return ResponseEntity.created(URI.create("/api/v1/ventas/contado/" + nuevaVenta.getId())).body(nuevaVenta);
-	}
-
-	@Operation(summary = "Registrar venta financiada", description = "Crea una nueva venta financiada en cuotas.")
-	@PostMapping("/financiada")
-	public ResponseEntity<RespuestaVentaHistorialDTO> registrarFinanciada(@RequestBody VentaRequestDTO dto) {
-		RespuestaVentaHistorialDTO nuevaVenta = service.realizarVentaFinanciada(dto, 15);
-		return ResponseEntity.created(URI.create("/api/v1/ventas/financiada/" + nuevaVenta.getId())).body(nuevaVenta);
+	@Operation(summary = "Registrar venta", description = "Crea una nueva venta al contado o financiada según el tipo de pago.")
+	@PostMapping
+	public ResponseEntity<RespuestaVentaHistorialDTO> registrarVenta(@RequestBody VentaRequestDTO dto) {
+		RespuestaVentaHistorialDTO nuevaVenta = service.registrarVenta(dto);
+		return ResponseEntity.created(URI.create("/api/v1/ventas/" + nuevaVenta.getId())).body(nuevaVenta);
 	}
 
 	@Operation(
